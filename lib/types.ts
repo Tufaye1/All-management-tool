@@ -27,6 +27,34 @@ export type Project = {
   created_at: string;
 };
 
+export type TaskStatus = "todo" | "in_progress" | "review" | "done" | "blocked";
+export type FunctionTag = "design" | "marketing" | "strategy" | "content" | "ads" | "analytics" | "admin";
+export type Priority = "low" | "normal" | "high" | "urgent";
+
+export type Task = {
+  id: string;
+  workspace_id: string;
+  project_id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  function_tag: FunctionTag;
+  assignee_id: string | null;
+  reporter_id: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  priority: Priority;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TaskWithRelations = Task & {
+  projects: { name: string } | null;
+  clients: { name: string } | null;
+};
+
 export type WorkspaceRole = "admin" | "account_lead" | "team_member" | "finance" | "viewer";
 
 export type WorkspaceMember = {
@@ -35,4 +63,9 @@ export type WorkspaceMember = {
   user_id: string;
   role: WorkspaceRole;
   created_at: string;
+};
+
+export type WorkspaceMemberWithEmail = WorkspaceMember & {
+  email: string;
+  full_name: string | null;
 };

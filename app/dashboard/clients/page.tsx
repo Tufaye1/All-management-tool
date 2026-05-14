@@ -33,8 +33,6 @@ export default async function ClientsPage() {
 
   return (
     <div style={{
-      background: "var(--color-bg-app)",
-      minHeight: "100vh",
       padding: "var(--space-8) var(--space-5)",
     }}>
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>

@@ -67,12 +67,11 @@ export default async function DashboardPage() {
 
   return (
     <div style={{
-      background: "var(--color-bg-app)",
-      minHeight: "100vh",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: "var(--space-5)",
+      padding: "var(--space-10) var(--space-5)",
+      minHeight: "calc(100vh - 56px)",
     }}>
       <div className="card-elevated" style={{
         maxWidth: "480px",
