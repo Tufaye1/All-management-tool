@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardNav } from "./dashboard-nav";
+import styles from "./nav.module.css";
 
 export default async function DashboardLayout({
   children,
@@ -17,7 +18,9 @@ export default async function DashboardLayout({
   return (
     <div style={{ background: "var(--color-bg-app)", minHeight: "100vh" }}>
       <DashboardNav email={user.email ?? ""} />
-      {children}
+      <main className={styles.main}>
+        {children}
+      </main>
     </div>
   );
 }
