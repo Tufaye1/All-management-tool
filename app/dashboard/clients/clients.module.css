@@ -180,6 +180,21 @@
   margin-top: var(--space-2);
 }
 
+.editButton {
+  background: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editButton:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
 .error {
   color: var(--color-danger);
   font-size: var(--text-sm);

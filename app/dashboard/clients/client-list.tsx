@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Pencil } from "lucide-react";
 import type { Client } from "@/lib/types";
 import { ClientModal } from "./client-modal";
 import styles from "./clients.module.css";
@@ -27,13 +28,9 @@ type ClientListProps = {
 };
 
 export function ClientList({ clients, workspaceId, canEdit }: ClientListProps) {
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-
-  function handleRowClick(client: Client) {
-    if (!canEdit) return;
-    setEditingClient(client);
-  }
 
   return (
     <>
@@ -59,13 +56,13 @@ export function ClientList({ clients, workspaceId, canEdit }: ClientListProps) {
             <div
               key={client.id}
               className={styles.row}
-              onClick={() => handleRowClick(client)}
-              role={canEdit ? "button" : undefined}
-              tabIndex={canEdit ? 0 : undefined}
+              onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+              role="button"
+              tabIndex={0}
               onKeyDown={(e) => {
-                if (canEdit && (e.key === "Enter" || e.key === " ")) {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  handleRowClick(client);
+                  router.push(`/dashboard/clients/${client.id}`);
                 }
               }}
             >
@@ -85,6 +82,18 @@ export function ClientList({ clients, workspaceId, canEdit }: ClientListProps) {
                 <span className={styles.date}>
                   {formatDate(client.created_at)}
                 </span>
+                {canEdit && (
+                  <button
+                    className={styles.editButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingClient(client);
+                    }}
+                    aria-label={`Edit ${client.name}`}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
