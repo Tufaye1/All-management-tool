@@ -2,36 +2,57 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 async function getOrCreateWorkspace(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, email: string) {
-  const { data: membership } = await supabase
+  const { data: membership, error: memberError } = await supabase
     .from("workspace_members")
-    .select("workspace_id, role, workspaces(id, name)")
+    .select("workspace_id, role")
     .eq("user_id", userId)
     .limit(1)
     .single();
 
-  if (membership?.workspaces) {
-    return membership.workspaces;
+  if (memberError) {
+    console.error("workspace_members query failed:", memberError.message, memberError.code);
   }
 
-  const { data: user } = await supabase.auth.getUser();
-  const fullName = user.user?.user_metadata?.full_name;
+  if (membership) {
+    const { data: workspace, error: wsError } = await supabase
+      .from("workspaces")
+      .select("id, name")
+      .eq("id", membership.workspace_id)
+      .single();
+
+    if (wsError) {
+      console.error("workspaces query failed:", wsError.message, wsError.code);
+    }
+
+    if (workspace) {
+      return workspace;
+    }
+  }
+
+  const { data: authUser } = await supabase.auth.getUser();
+  const fullName = authUser.user?.user_metadata?.full_name;
   const workspaceName = (fullName || email.split("@")[0]) + "'s Workspace";
 
-  const { data: workspace, error: wsError } = await supabase
+  const { data: newWorkspace, error: createError } = await supabase
     .from("workspaces")
     .insert({ name: workspaceName, owner_id: userId })
     .select()
     .single();
 
-  if (wsError || !workspace) {
+  if (createError) {
+    console.error("workspace create failed:", createError.message, createError.code);
     return null;
   }
 
-  await supabase
+  const { error: addMemberError } = await supabase
     .from("workspace_members")
-    .insert({ workspace_id: workspace.id, user_id: userId, role: "admin" });
+    .insert({ workspace_id: newWorkspace.id, user_id: userId, role: "admin" });
 
-  return workspace;
+  if (addMemberError) {
+    console.error("workspace_members insert failed:", addMemberError.message, addMemberError.code);
+  }
+
+  return newWorkspace;
 }
 
 export default async function DashboardPage() {
