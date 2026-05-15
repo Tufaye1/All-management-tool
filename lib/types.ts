@@ -69,3 +69,15 @@ export type WorkspaceMemberWithEmail = WorkspaceMember & {
   email: string;
   full_name: string | null;
 };
+
+export type Invitation = {
+  id: string;
+  workspace_id: string;
+  email: string;
+  role: WorkspaceRole;
+  invited_by: string;
+  token: string;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+};

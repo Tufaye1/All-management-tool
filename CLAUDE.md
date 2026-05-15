@@ -96,3 +96,46 @@ Full plan is in `docs/brainstorm.md` — read it once at project start.
 ## WHO IS TUFAYEL
 
 Tufayel runs the agency and is building this himself with Claude Code's help. He has some coding basics (tutorials, small scripts) and prefers concise, direct communication. He'll handle all signups, API keys, and product decisions. Claude Code's job is the code and the technical implementation. Tufayel's job is direction, decisions, and testing.
+
+---
+
+## Current State
+
+### Database tables (Supabase)
+| Table | Purpose |
+|-------|---------|
+| `workspaces` | Multi-tenant container. Every data row has `workspace_id`. Owner tracked via `owner_id`. |
+| `workspace_members` | Links users to workspaces with a role (`admin`, `account_lead`, `team_member`, `finance`, `viewer`). |
+| `clients` | Agency clients. Has `status` (active/paused/completed), contact info, `archived_at` for soft delete. |
+| `projects` | Belongs to a client. Has `status` (planning/active/review/completed/paused), start/end dates. |
+| `tasks` | Belongs to a project + client. Dual-tagged: `project_id` and `function_tag`. Has priority, assignee, due date, position for ordering. |
+| `invitations` | Pending team invites. Stores `email`, `role`, `token` (UUID), `expires_at`, `accepted_at`. |
+
+All tables have RLS policies enforcing workspace isolation. A `handle_new_user` trigger on `auth.users` auto-creates a workspace + admin membership on signup.
+
+### App routes
+| Route | Type | Description |
+|-------|------|-------------|
+| `/` | Server redirect | Sends to `/dashboard` or `/login` |
+| `/login` | Client component | Email/password + Google OAuth |
+| `/signup` | Client component | Name + email + password, email confirmation |
+| `/auth/callback` | Route handler | OAuth code exchange |
+| `/dashboard` | Server component | Admin dashboard — stats (active clients, due today, overdue, active projects), recent clients, upcoming tasks |
+| `/dashboard/clients` | Server + Client | Client list with add/edit modals |
+| `/dashboard/clients/[clientId]` | Server + Client | Client detail with iOS segmented tabs (Overview / Projects), project cards, add/edit project modals |
+| `/dashboard/tasks` | Server + Client | Task list with 5 filter dropdowns (client, function, assignee, status, priority), mobile bottom sheet, add/edit task modal with cascading client→project dropdowns |
+| `/dashboard/team` | Server + Client | Team member list (role management, remove with confirmation), pending invitations (copy link, revoke) |
+| `/dashboard/finance` | Static placeholder | "Coming after v1 ships" |
+| `/accept-invite` | Client component | Public page — validates invite token, accepts invitation, adds user to workspace |
+
+### Sidebar navigation
+240px fixed sidebar (hamburger on mobile) with: Dashboard, Clients, Tasks, Team, Finance. User avatar + sign out at bottom.
+
+### Known bugs / incomplete items
+- **Trigger bug (not yet fixed):** When an invited user signs up, the `handle_new_user` trigger creates a NEW workspace for them instead of adding them to the inviter's workspace. The trigger needs to check the `invitations` table first. SQL fix is written but not yet applied.
+- **Member email resolution:** The team page can only show the current user's email/name. Other members show truncated user IDs. Needs a `profiles` table or service-role API call to resolve all emails.
+- **Invite flow uses shareable links** (copy-paste) instead of email delivery, because we only have the anon key (not service role key).
+
+### Where we stopped
+- Week 3 progress: team module built (team page, invite modal, accept-invite page, invitation table).
+- Next up: fix the `handle_new_user` trigger, then permission gating across all pages based on roles.
