@@ -87,6 +87,8 @@ export function canSeeNavItem(role: WorkspaceRole, item: string): boolean {
       return hasPermission(role, "finance:read");
     case "team":
       return hasPermission(role, "team:read");
+    case "settings":
+      return role === "admin";
     default:
       return true;
   }

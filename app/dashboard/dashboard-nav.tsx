@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, CheckSquare, Users, DollarSign, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Building2, CheckSquare, Users, DollarSign, Settings, LogOut, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { canSeeNavItem } from "@/lib/permissions";
 import type { WorkspaceRole } from "@/lib/types";
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare, exact: false, key: "tasks" },
   { href: "/dashboard/team", label: "Team", icon: Users, exact: false, key: "team" },
   { href: "/dashboard/finance", label: "Finance", icon: DollarSign, exact: false, key: "finance" },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false, key: "settings" },
 ];
 
 type DashboardNavProps = {

@@ -88,3 +88,67 @@ export type Invitation = {
   accepted_at: string | null;
   created_at: string;
 };
+
+/* -------- Workspace -------- */
+
+export type Workspace = {
+  id: string;
+  name: string;
+  owner_id: string;
+  currency: string;
+  created_at: string;
+};
+
+/* -------- Finance -------- */
+
+export type CostCategory = "ad_spend" | "freelancer" | "tools" | "other";
+export type InvoiceStatus = "unpaid" | "paid" | "overdue";
+
+export type RevenueEntry = {
+  id: string;
+  workspace_id: string;
+  client_id: string;
+  amount: number;
+  description: string | null;
+  date: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type CostEntry = {
+  id: string;
+  workspace_id: string;
+  client_id: string;
+  amount: number;
+  category: CostCategory;
+  description: string | null;
+  date: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type Invoice = {
+  id: string;
+  workspace_id: string;
+  client_id: string;
+  invoice_number: string;
+  amount: number;
+  status: InvoiceStatus;
+  due_date: string;
+  paid_date: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type RevenueEntryWithClient = RevenueEntry & {
+  clients: { name: string } | null;
+};
+
+export type CostEntryWithClient = CostEntry & {
+  clients: { name: string } | null;
+};
+
+export type InvoiceWithClient = Invoice & {
+  clients: { name: string } | null;
+};
