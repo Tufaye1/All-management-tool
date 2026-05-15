@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast";
 import type { Project, ProjectStatus } from "@/lib/types";
 import styles from "../clients.module.css";
 
@@ -16,6 +17,7 @@ type ProjectModalProps = {
 
 export function ProjectModal({ workspaceId, clientId, project, onClose }: ProjectModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "planning");
@@ -71,6 +73,7 @@ export function ProjectModal({ workspaceId, clientId, project, onClose }: Projec
       }
     }
 
+    toast(isEditing ? "Project updated" : "Project created");
     router.refresh();
     onClose();
   }

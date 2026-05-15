@@ -70,6 +70,13 @@ export type WorkspaceMemberWithEmail = WorkspaceMember & {
   full_name: string | null;
 };
 
+export type Profile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  updated_at: string;
+};
+
 export type Invitation = {
   id: string;
   workspace_id: string;

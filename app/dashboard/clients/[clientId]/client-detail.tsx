@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Plus } from "lucide-react";
 import type { Client, Project } from "@/lib/types";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProjectModal } from "./project-modal";
 import styles from "./detail.module.css";
 
@@ -44,10 +45,11 @@ export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientD
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <Link href="/dashboard/clients" className={styles.backLink}>
-          <ChevronLeft size={16} />
-          All Clients
-        </Link>
+        <Breadcrumbs crumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Clients", href: "/dashboard/clients" },
+          { label: client.name },
+        ]} />
 
         <div className={styles.clientHeader}>
           <h2 className={styles.clientName}>{client.name}</h2>

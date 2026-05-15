@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast";
 import type { Task, TaskStatus, FunctionTag, Priority, Client, Project, WorkspaceMemberWithEmail } from "@/lib/types";
 import modalStyles from "../clients/clients.module.css";
 
@@ -18,6 +19,7 @@ type TaskModalProps = {
 
 export function TaskModal({ workspaceId, userId, clients, members, task, onClose }: TaskModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const isEditing = !!task;
 
   const [title, setTitle] = useState(task?.title ?? "");
@@ -113,6 +115,7 @@ export function TaskModal({ workspaceId, userId, clients, members, task, onClose
       }
     }
 
+    toast(isEditing ? "Task updated" : "Task created");
     router.refresh();
     onClose();
   }

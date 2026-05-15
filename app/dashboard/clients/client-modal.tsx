@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast";
 import type { Client, ClientStatus } from "@/lib/types";
 import styles from "./clients.module.css";
 
@@ -15,6 +16,7 @@ type ClientModalProps = {
 
 export function ClientModal({ workspaceId, client, onClose }: ClientModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [name, setName] = useState(client?.name ?? "");
   const [contactName, setContactName] = useState(client?.contact_name ?? "");
   const [contactEmail, setContactEmail] = useState(client?.contact_email ?? "");
@@ -72,6 +74,7 @@ export function ClientModal({ workspaceId, client, onClose }: ClientModalProps) 
       }
     }
 
+    toast(isEditing ? "Client updated" : "Client added");
     router.refresh();
     onClose();
   }

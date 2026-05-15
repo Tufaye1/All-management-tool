@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Building2, CheckSquare, Users, DollarSign, LogOut, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { canSeeNavItem } from "@/lib/permissions";
+import type { WorkspaceRole } from "@/lib/types";
 import styles from "./nav.module.css";
 
 function getInitials(email: string) {
@@ -12,18 +14,20 @@ function getInitials(email: string) {
 }
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/clients", label: "Clients", icon: Building2, exact: false },
-  { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare, exact: false },
-  { href: "/dashboard/team", label: "Team", icon: Users, exact: false },
-  { href: "/dashboard/finance", label: "Finance", icon: DollarSign, exact: false },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
+  { href: "/dashboard/clients", label: "Clients", icon: Building2, exact: false, key: "clients" },
+  { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare, exact: false, key: "tasks" },
+  { href: "/dashboard/team", label: "Team", icon: Users, exact: false, key: "team" },
+  { href: "/dashboard/finance", label: "Finance", icon: DollarSign, exact: false, key: "finance" },
 ];
 
 type DashboardNavProps = {
   email: string;
+  role: WorkspaceRole;
+  fullName: string | null;
 };
 
-export function DashboardNav({ email }: DashboardNavProps) {
+export function DashboardNav({ email, role, fullName }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,7 +72,9 @@ export function DashboardNav({ email }: DashboardNavProps) {
         </div>
 
         <nav className={styles.links}>
-          {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => (
+          {NAV_ITEMS
+            .filter(({ key }) => canSeeNavItem(role, key))
+            .map(({ href, label, icon: Icon, exact }) => (
             <Link
               key={href}
               href={href}
@@ -82,8 +88,9 @@ export function DashboardNav({ email }: DashboardNavProps) {
         </nav>
 
         <div className={styles.userArea}>
-          <span className={styles.avatar}>{getInitials(email)}</span>
+          <span className={styles.avatar}>{fullName ? getInitials(fullName) : getInitials(email)}</span>
           <div className={styles.userInfo}>
+            {fullName && <span className={styles.userName}>{fullName}</span>}
             <span className={styles.userEmail}>{email}</span>
           </div>
           <button className={styles.signOutButton} onClick={handleSignOut} aria-label="Sign out">

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import styles from "./dashboard.module.css";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -92,7 +95,13 @@ export default async function DashboardPage() {
   const recentClients = recentClientsResult.data ?? [];
   const upcomingTasks = upcomingTasksResult.data ?? [];
 
-  const displayName = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "there";
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .single();
+
+  const displayName = profile?.full_name || (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "there";
 
   const STATUS_PILL: Record<string, string> = {
     active: "pill pill-success",

@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Client, Project } from "@/lib/types";
+import type { Client, Project, WorkspaceRole } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
 import { ClientDetail } from "./client-detail";
 
 type PageProps = {
@@ -45,7 +46,8 @@ export default async function ClientDetailPage({ params }: PageProps) {
     .eq("workspace_id", membership.workspace_id)
     .order("created_at", { ascending: false });
 
-  const canEdit = ["admin", "account_lead"].includes(membership.role);
+  const role = membership.role as WorkspaceRole;
+  const canEdit = hasPermission(role, "projects:write");
 
   return (
     <ClientDetail

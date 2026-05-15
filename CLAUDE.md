@@ -110,8 +110,11 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 | `projects` | Belongs to a client. Has `status` (planning/active/review/completed/paused), start/end dates. |
 | `tasks` | Belongs to a project + client. Dual-tagged: `project_id` and `function_tag`. Has priority, assignee, due date, position for ordering. |
 | `invitations` | Pending team invites. Stores `email`, `role`, `token` (UUID), `expires_at`, `accepted_at`. |
+| `profiles` | User profiles. `id` references `auth.users(id)`. Stores `full_name`, `avatar_url`. Auto-created on signup via trigger. |
 
-All tables have RLS policies enforcing workspace isolation. A `handle_new_user` trigger on `auth.users` auto-creates a workspace + admin membership on signup.
+All tables have RLS policies enforcing workspace isolation. Two triggers on `auth.users`:
+- `handle_new_user`: checks invitations → joins existing workspace or creates new one
+- `handle_new_profile`: creates a profile row with full_name from signup metadata
 
 ### App routes
 | Route | Type | Description |
@@ -120,22 +123,45 @@ All tables have RLS policies enforcing workspace isolation. A `handle_new_user` 
 | `/login` | Client component | Email/password + Google OAuth |
 | `/signup` | Client component | Name + email + password, email confirmation |
 | `/auth/callback` | Route handler | OAuth code exchange |
-| `/dashboard` | Server component | Admin dashboard — stats (active clients, due today, overdue, active projects), recent clients, upcoming tasks |
-| `/dashboard/clients` | Server + Client | Client list with add/edit modals |
-| `/dashboard/clients/[clientId]` | Server + Client | Client detail with iOS segmented tabs (Overview / Projects), project cards, add/edit project modals |
-| `/dashboard/tasks` | Server + Client | Task list with 5 filter dropdowns (client, function, assignee, status, priority), mobile bottom sheet, add/edit task modal with cascading client→project dropdowns |
-| `/dashboard/team` | Server + Client | Team member list (role management, remove with confirmation), pending invitations (copy link, revoke) |
+| `/dashboard` | Server component | Admin dashboard — stats, recent clients, upcoming tasks. Loading skeleton. |
+| `/dashboard/clients` | Server + Client | Client list with add/edit modals. Loading skeleton. |
+| `/dashboard/clients/[clientId]` | Server + Client | Client detail with breadcrumbs, iOS segmented tabs (Overview / Projects), project cards. Loading skeleton. |
+| `/dashboard/tasks` | Server + Client | List + Kanban toggle. 5 filter dropdowns, mobile bottom sheet. Task detail slide-in panel. Loading skeleton. |
+| `/dashboard/team` | Server + Client | Team member list (role management, remove with confirmation), pending invitations (copy link, revoke). Loading skeleton. |
 | `/dashboard/finance` | Static placeholder | "Coming after v1 ships" |
 | `/accept-invite` | Client component | Public page — validates invite token, accepts invitation, adds user to workspace |
 
-### Sidebar navigation
-240px fixed sidebar (hamburger on mobile) with: Dashboard, Clients, Tasks, Team, Finance. User avatar + sign out at bottom.
+### Permissions system (`lib/permissions.ts`)
+Role-based permission matrix with 13 permissions across 6 domains (clients, projects, tasks, finance, team, dashboard).
+- `hasPermission(role, permission)` — server-side checks in page.tsx files
+- `usePermissions()` hook — client-side checks
+- `<PermissionGate>` component — declarative access control in JSX
+- Sidebar nav items filtered by role (Finance hidden from non-finance roles)
+- Add/Edit buttons gated: clients:write, projects:write, tasks:write_own, team:invite, team:manage
 
-### Known bugs / incomplete items
-- **Trigger bug (fixed):** The `handle_new_user` trigger now checks the `invitations` table before creating a workspace. If a pending invitation matches the new user's email, the trigger adds them to the inviter's workspace with the invited role and marks the invitation accepted. The accept-invite page has a fallback for existing users (trigger only fires on signup).
-- **Member email resolution:** The team page can only show the current user's email/name. Other members show truncated user IDs. Needs a `profiles` table or service-role API call to resolve all emails.
+### Shared components (`components/`)
+| Component | Purpose |
+|-----------|---------|
+| `<ToastProvider>` + `useToast()` | Toast notifications for all success/error actions. Wraps dashboard layout. |
+| `<Breadcrumbs>` | Chevron-separated navigation trail. Used on client detail page. |
+| `<Skeleton>` + `<PageSkeleton>` | Shimmer loading skeletons matching page content shapes. Used via `loading.tsx` in every route. |
+| `<PermissionGate>` | Conditional rendering based on role/permission. |
+
+### Sidebar navigation
+240px fixed sidebar (hamburger on mobile). Nav items filtered by role. Shows user's full name (from profiles table) + email. Sign out at bottom.
+
+### Key UI patterns
+- **Task detail panel:** Slide-in from right (440px desktop, full screen mobile). Inline editable title/description. Auto-save with debounce. Fields grid for status/priority/function/assignee/due date.
+- **Kanban view:** 5 columns by status. Drag-and-drop to change status. Cards show title, priority pill, assignee avatar, due date. View preference persisted in localStorage.
+- **View toggle:** iOS-style segmented control (List | Board) on tasks page.
+- **Page titles:** Each route exports `metadata.title`, root layout uses `%s — Agency OS` template.
+- **Page transitions:** Subtle fade-in animation on route changes.
+- **Toast notifications:** Success/error/info toasts on all CRUD actions across clients, projects, tasks, invitations.
+
+### Known limitations
 - **Invite flow uses shareable links** (copy-paste) instead of email delivery, because we only have the anon key (not service role key).
+- **Profiles table SQL must be run manually** in Supabase SQL Editor (profiles table, RLS policies, trigger, backfill).
 
 ### Where we stopped
-- Week 3 progress: team module built (team page, invite modal, accept-invite page, invitation table).
-- Next up: fix the `handle_new_user` trigger, then permission gating across all pages based on roles.
+- Week 3–4 complete: permissions, profiles, task detail panel, kanban, UX polish all built.
+- v1 is feature-complete for internal launch. Next: deploy to Vercel, test with team for 1–2 weeks, then iterate.

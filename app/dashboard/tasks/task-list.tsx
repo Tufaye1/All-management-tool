@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Filter, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Filter, X, List, Columns3 } from "lucide-react";
 import type { Task, TaskWithRelations, Client, WorkspaceMemberWithEmail } from "@/lib/types";
 import { TaskModal } from "./task-modal";
+import { TaskPanel } from "./task-panel";
+import { KanbanView } from "./kanban-view";
 import styles from "./tasks.module.css";
+import kanbanStyles from "./kanban-view.module.css";
 
 const STATUS_PILL: Record<string, string> = {
   todo: "pill pill-info",
@@ -71,10 +74,24 @@ type TaskListProps = {
   canEdit: boolean;
 };
 
+type ViewMode = "list" | "kanban";
+
 export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit }: TaskListProps) {
   const [showModal, setShowModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("agencyos-task-view");
+    if (saved === "list" || saved === "kanban") setViewMode(saved);
+  }, []);
+
+  function switchView(mode: ViewMode) {
+    setViewMode(mode);
+    localStorage.setItem("agencyos-task-view", mode);
+  }
+
   const [filters, setFilters] = useState<Filters>({
     client: "",
     function_tag: "",
@@ -132,14 +149,32 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
       <div className={styles.container}>
         <div className={styles.header}>
           <h2 className={styles.title}>Tasks</h2>
-          {canEdit && (
-            <button className="primary" onClick={() => setShowModal(true)}>
-              <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                <Plus size={18} />
-                Add Task
-              </span>
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <div className={kanbanStyles.viewToggle}>
+              <button
+                className={`${kanbanStyles.viewToggleButton} ${viewMode === "list" ? kanbanStyles.viewToggleButtonActive : ""}`}
+                onClick={() => switchView("list")}
+              >
+                <List size={14} />
+                List
+              </button>
+              <button
+                className={`${kanbanStyles.viewToggleButton} ${viewMode === "kanban" ? kanbanStyles.viewToggleButtonActive : ""}`}
+                onClick={() => switchView("kanban")}
+              >
+                <Columns3 size={14} />
+                Board
+              </button>
+            </div>
+            {canEdit && (
+              <button className="primary" onClick={() => setShowModal(true)}>
+                <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <Plus size={18} />
+                  Add Task
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Desktop filters */}
@@ -218,13 +253,19 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
           </div>
         )}
 
-        {/* Task list */}
+        {/* Task views */}
         {filtered.length === 0 ? (
           <div className={styles.empty}>
             {tasks.length === 0
               ? "No tasks yet. Add your first task to get started."
               : "No tasks match the current filters."}
           </div>
+        ) : viewMode === "kanban" ? (
+          <KanbanView
+            tasks={filtered}
+            members={members}
+            onTaskClick={(task) => setSelectedTask(task)}
+          />
         ) : (
           <div className={styles.list}>
             {filtered.map((task) => {
@@ -235,13 +276,13 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
                 <div
                   key={task.id}
                   className={styles.row}
-                  onClick={() => canEdit && setEditingTask(task)}
-                  role={canEdit ? "button" : undefined}
-                  tabIndex={canEdit ? 0 : undefined}
+                  onClick={() => setSelectedTask(task)}
+                  role="button"
+                  tabIndex={0}
                   onKeyDown={(e) => {
-                    if (canEdit && (e.key === "Enter" || e.key === " ")) {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setEditingTask(task);
+                      setSelectedTask(task);
                     }
                   }}
                 >
@@ -291,14 +332,13 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
           />
         )}
 
-        {editingTask && (
-          <TaskModal
-            workspaceId={workspaceId}
-            userId={userId}
+        {selectedTask && (
+          <TaskPanel
+            task={selectedTask}
             clients={clients}
             members={members}
-            task={editingTask}
-            onClose={() => setEditingTask(null)}
+            canEdit={canEdit}
+            onClose={() => setSelectedTask(null)}
           />
         )}
       </div>

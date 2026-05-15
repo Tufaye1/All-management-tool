@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { DollarSign } from "lucide-react";
+
+export const metadata: Metadata = { title: "Finance" };
 
 export default function FinancePage() {
   return (

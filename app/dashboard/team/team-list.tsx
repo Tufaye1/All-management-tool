@@ -47,10 +47,11 @@ type TeamListProps = {
   invitations: Invitation[];
   workspaceId: string;
   currentUserId: string;
-  isAdmin: boolean;
+  canInvite: boolean;
+  canManageTeam: boolean;
 };
 
-export function TeamList({ members, invitations, workspaceId, currentUserId, isAdmin }: TeamListProps) {
+export function TeamList({ members, invitations, workspaceId, currentUserId, canInvite, canManageTeam }: TeamListProps) {
   const router = useRouter();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, isA
       <div className={styles.container}>
         <div className={styles.header}>
           <h2 className={styles.title}>Team</h2>
-          {isAdmin && (
+          {canInvite && (
             <button className="primary" onClick={() => setShowInviteModal(true)}>
               <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                 <Plus size={18} />
@@ -149,7 +150,7 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, isA
                       <span className={styles.joinDate}>
                         Joined {formatDate(member.created_at)}
                       </span>
-                      {isAdmin && !isSelf ? (
+                      {canManageTeam && !isSelf ? (
                         <select
                           className={styles.roleSelect}
                           value={member.role}
@@ -166,7 +167,7 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, isA
                           {ROLE_LABELS[member.role]}
                         </span>
                       )}
-                      {isAdmin && !isSelf && (
+                      {canManageTeam && !isSelf && (
                         <button
                           className={styles.removeButton}
                           onClick={() => setRemoving(member.id)}
@@ -183,7 +184,7 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, isA
           )}
         </div>
 
-        {isAdmin && (
+        {canInvite && (
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
               Pending Invitations ({pendingInvitations.length})

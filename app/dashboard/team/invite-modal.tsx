@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast";
 import type { WorkspaceRole } from "@/lib/types";
 import styles from "../clients/clients.module.css";
 
@@ -15,6 +16,7 @@ type InviteModalProps = {
 
 export function InviteModal({ workspaceId, invitedBy, onClose }: InviteModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<WorkspaceRole>("team_member");
   const [error, setError] = useState("");
@@ -74,6 +76,7 @@ export function InviteModal({ workspaceId, invitedBy, onClose }: InviteModalProp
       return;
     }
 
+    toast("Invitation created — copy the link to share");
     router.refresh();
     onClose();
   }

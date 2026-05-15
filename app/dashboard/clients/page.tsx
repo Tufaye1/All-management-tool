@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Client } from "@/lib/types";
+import type { Client, WorkspaceRole } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
 import { ClientList } from "./client-list";
+
+export const metadata: Metadata = { title: "Clients" };
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -29,7 +33,8 @@ export default async function ClientsPage() {
     .is("archived_at", null)
     .order("created_at", { ascending: false });
 
-  const canEdit = ["admin", "account_lead"].includes(membership.role);
+  const role = membership.role as WorkspaceRole;
+  const canEdit = hasPermission(role, "clients:write");
 
   return (
     <div style={{
