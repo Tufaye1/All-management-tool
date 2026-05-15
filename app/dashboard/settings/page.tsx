@@ -35,11 +35,37 @@ export default async function SettingsPage() {
   const role = membershipResult.data.role as WorkspaceRole;
   const workspaceId = membershipResult.data.workspace_id;
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id, name, currency, owner_id")
-    .eq("id", workspaceId)
-    .single();
+  const [workspaceResult, integrationsResult, templatesResult] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("id, name, currency, owner_id")
+      .eq("id", workspaceId)
+      .single(),
+    supabase
+      .from("workspace_integrations")
+      .select("provider, extra_data")
+      .eq("workspace_id", workspaceId),
+    supabase
+      .from("project_templates")
+      .select("id, name, description, created_at, template_tasks(id)")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const workspace = workspaceResult.data;
+  const integrations = integrationsResult.data ?? [];
+
+  const connectedProviders = integrations.map((i) => i.provider);
+  const slackTeamName = integrations.find((i) => i.provider === "slack")
+    ?.extra_data as Record<string, unknown> | null;
+
+  const templates = (templatesResult.data ?? []).map((t) => ({
+    id: t.id as string,
+    name: t.name as string,
+    description: t.description as string | null,
+    taskCount: Array.isArray(t.template_tasks) ? t.template_tasks.length : 0,
+    createdAt: t.created_at as string,
+  }));
 
   return (
     <SettingsForm
@@ -52,6 +78,9 @@ export default async function SettingsPage() {
       userEmail={user.email ?? ""}
       fullName={profileResult.data?.full_name ?? ""}
       avatarUrl={profileResult.data?.avatar_url ?? ""}
+      connectedProviders={connectedProviders}
+      slackTeamName={(slackTeamName?.team_name as string) ?? null}
+      templates={templates}
     />
   );
 }

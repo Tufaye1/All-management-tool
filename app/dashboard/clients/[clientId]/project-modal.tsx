@@ -8,14 +8,31 @@ import { useToast } from "@/components/toast";
 import type { Project, ProjectStatus } from "@/lib/types";
 import styles from "../clients.module.css";
 
+type TemplateSummary = {
+  id: string;
+  name: string;
+  taskCount: number;
+};
+
 type ProjectModalProps = {
   workspaceId: string;
   clientId: string;
+  clientName: string;
   project?: Project | null;
   onClose: () => void;
+  templates?: TemplateSummary[];
+  driveConnected?: boolean;
 };
 
-export function ProjectModal({ workspaceId, clientId, project, onClose }: ProjectModalProps) {
+export function ProjectModal({
+  workspaceId,
+  clientId,
+  clientName,
+  project,
+  onClose,
+  templates = [],
+  driveConnected = false,
+}: ProjectModalProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [name, setName] = useState(project?.name ?? "");
@@ -23,6 +40,7 @@ export function ProjectModal({ workspaceId, clientId, project, onClose }: Projec
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "planning");
   const [startDate, setStartDate] = useState(project?.start_date ?? "");
   const [endDate, setEndDate] = useState(project?.end_date ?? "");
+  const [templateId, setTemplateId] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,32 +68,98 @@ export function ProjectModal({ workspaceId, clientId, project, onClose }: Projec
       end_date: endDate || null,
     };
 
-    if (isEditing) {
-      const { error } = await supabase
-        .from("projects")
-        .update(payload)
-        .eq("id", project.id);
+    try {
+      if (isEditing) {
+        const { error } = await supabase
+          .from("projects")
+          .update(payload)
+          .eq("id", project.id);
 
-      if (error) {
-        setError(error.message);
-        setIsLoading(false);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from("projects")
-        .insert({ ...payload, workspace_id: workspaceId, client_id: clientId });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+      } else {
+        const { data: newProject, error } = await supabase
+          .from("projects")
+          .insert({ ...payload, workspace_id: workspaceId, client_id: clientId })
+          .select("id")
+          .single();
 
-      if (error) {
-        setError(error.message);
-        setIsLoading(false);
-        return;
+        if (error || !newProject) {
+          setError(error?.message ?? "Failed to create project");
+          return;
+        }
+
+        // Create template tasks if a template was selected
+        if (templateId) {
+          await createTemplateTasks(supabase, newProject.id, templateId, startDate);
+        }
+
+        // Create Drive folder if connected
+        if (driveConnected) {
+          try {
+            await fetch("/api/integrations/google-drive/create-folder", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                projectId: newProject.id,
+                clientName,
+                projectName: name,
+                workspaceId,
+              }),
+            });
+          } catch {
+            // Non-blocking — folder creation failure shouldn't block project creation
+          }
+        }
       }
+
+      toast(isEditing ? "Project updated" : "Project created");
+      router.refresh();
+      onClose();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
+  }
 
-    toast(isEditing ? "Project updated" : "Project created");
-    router.refresh();
-    onClose();
+  async function createTemplateTasks(
+    supabase: ReturnType<typeof createClient>,
+    projectId: string,
+    selectedTemplateId: string,
+    projectStartDate: string,
+  ) {
+    const { data: templateTasks } = await supabase
+      .from("template_tasks")
+      .select("title, description, function_tag, priority, due_days_from_start, position")
+      .eq("template_id", selectedTemplateId)
+      .order("position");
+
+    if (!templateTasks || templateTasks.length === 0) return;
+
+    const baseDate = projectStartDate ? new Date(projectStartDate) : new Date();
+
+    const tasks = templateTasks.map((t) => {
+      const dueDate = new Date(baseDate);
+      dueDate.setDate(dueDate.getDate() + t.due_days_from_start);
+
+      return {
+        workspace_id: workspaceId,
+        project_id: projectId,
+        client_id: clientId,
+        title: t.title,
+        description: t.description,
+        function_tag: t.function_tag,
+        priority: t.priority,
+        status: "todo" as const,
+        due_date: dueDate.toISOString().split("T")[0],
+        position: t.position,
+      };
+    });
+
+    await supabase.from("tasks").insert(tasks);
   }
 
   return (
@@ -157,13 +241,35 @@ export function ProjectModal({ workspaceId, clientId, project, onClose }: Projec
             </div>
           </div>
 
+          {!isEditing && templates.length > 0 && (
+            <div className={styles.inputGroup}>
+              <label className={styles.label} htmlFor="project-template">Use template?</label>
+              <select
+                id="project-template"
+                className={styles.select}
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+              >
+                <option value="">No template</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.taskCount} tasks)
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)" }}>
+                Auto-creates tasks from the selected template.
+              </span>
+            </div>
+          )}
+
           <div className={styles.formActions}>
             <button type="button" className="secondary" onClick={onClose}>
               Cancel
             </button>
             <button type="submit" className="primary" disabled={isLoading}>
               {isLoading
-                ? (isEditing ? "Saving..." : "Adding...")
+                ? (isEditing ? "Saving..." : "Creating...")
                 : (isEditing ? "Save Changes" : "Add Project")}
             </button>
           </div>

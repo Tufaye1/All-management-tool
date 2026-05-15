@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, Plus } from "lucide-react";
+import { Plus, FolderOpen } from "lucide-react";
 import type { Client, Project } from "@/lib/types";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProjectModal } from "./project-modal";
+import { SlackMessages } from "./slack-messages";
 import styles from "./detail.module.css";
 
 const PROJECT_STATUS_PILL: Record<string, string> = {
@@ -30,17 +30,40 @@ function formatDateRange(start: string | null, end: string | null) {
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
 
+type TemplateSummary = {
+  id: string;
+  name: string;
+  taskCount: number;
+};
+
 type ClientDetailProps = {
   client: Client;
   projects: Project[];
   workspaceId: string;
   canEdit: boolean;
+  templates?: TemplateSummary[];
+  driveConnected?: boolean;
+  slackConnected?: boolean;
 };
 
-export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientDetailProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "projects">("overview");
+export function ClientDetail({
+  client,
+  projects,
+  workspaceId,
+  canEdit,
+  templates = [],
+  driveConnected = false,
+  slackConnected = false,
+}: ClientDetailProps) {
+  const [activeTab, setActiveTab] = useState<"overview" | "projects" | "slack">("overview");
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  const tabs = [
+    { key: "overview" as const, label: "Overview" },
+    { key: "projects" as const, label: `Projects (${projects.length})` },
+    ...(slackConnected ? [{ key: "slack" as const, label: "Slack" }] : []),
+  ];
 
   return (
     <div className={styles.page}>
@@ -59,18 +82,15 @@ export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientD
         </div>
 
         <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${activeTab === "overview" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("overview")}
-          >
-            Overview
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === "projects" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("projects")}
-          >
-            Projects ({projects.length})
-          </button>
+          {tabs.map(({ key, label }) => (
+            <button
+              key={key}
+              className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {activeTab === "overview" && (
@@ -152,6 +172,18 @@ export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientD
                     {project.description && (
                       <p className={styles.projectDesc}>{project.description}</p>
                     )}
+                    {project.drive_folder_url && (
+                      <a
+                        href={project.drive_folder_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.driveFolderLink}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FolderOpen size={12} />
+                        Open Drive Folder
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
@@ -161,7 +193,10 @@ export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientD
               <ProjectModal
                 workspaceId={workspaceId}
                 clientId={client.id}
+                clientName={client.name}
                 onClose={() => setShowModal(false)}
+                templates={templates}
+                driveConnected={driveConnected}
               />
             )}
 
@@ -169,11 +204,20 @@ export function ClientDetail({ client, projects, workspaceId, canEdit }: ClientD
               <ProjectModal
                 workspaceId={workspaceId}
                 clientId={client.id}
+                clientName={client.name}
                 project={editingProject}
                 onClose={() => setEditingProject(null)}
               />
             )}
           </>
+        )}
+
+        {activeTab === "slack" && slackConnected && (
+          <SlackMessages
+            workspaceId={workspaceId}
+            clientId={client.id}
+            initialChannelId={client.slack_channel_id}
+          />
         )}
       </div>
     </div>

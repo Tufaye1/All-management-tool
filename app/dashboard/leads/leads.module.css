@@ -62,10 +62,9 @@
 
 .board {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-2);
   overflow-x: auto;
   padding-bottom: var(--space-4);
-  min-height: 500px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -75,6 +74,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  border-radius: var(--radius-lg);
+  min-height: 500px;
 }
 
 @media (min-width: 1400px) {
@@ -85,12 +86,13 @@
   }
 }
 
+/* Column header */
+
 .columnHeader {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
+  padding: var(--space-4) var(--space-3);
 }
 
 .columnDot {
@@ -103,18 +105,15 @@
 .columnTitle {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.5px;
 }
 
 .columnCount {
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  background: var(--color-bg-muted);
   border-radius: var(--radius-full);
   padding: 2px 8px;
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
 }
 
 .columnValue {
@@ -132,21 +131,31 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-app);
   min-height: 120px;
   transition: background var(--transition-fast);
 }
 
 .dropZoneActive {
-  background: var(--color-primary-light);
+  background: rgba(0, 122, 255, 0.04);
 }
 
 .emptyColumn {
-  text-align: center;
-  padding: var(--space-8) var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 120px;
   color: var(--color-text-tertiary);
   font-size: var(--text-sm);
+  padding: var(--space-3);
+}
+
+.emptyColumnDragging {
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-weight: var(--weight-medium);
+  margin: var(--space-2);
 }
 
 /* -------- Lead Card -------- */
@@ -156,6 +165,7 @@
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   cursor: grab;
+  box-shadow: var(--shadow-sm);
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
   display: flex;
   flex-direction: column;
@@ -163,7 +173,8 @@
 }
 
 .card:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .cardDragging {
@@ -172,7 +183,7 @@
 }
 
 .cardCompany {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--weight-semibold);
   color: var(--color-text-primary);
   line-height: 1.3;

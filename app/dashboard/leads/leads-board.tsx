@@ -11,13 +11,13 @@ import styles from "./leads.module.css";
 
 /* -------- Constants -------- */
 
-const COLUMNS: { status: LeadStatus; label: string; color: string }[] = [
-  { status: "new", label: "New", color: "var(--color-text-tertiary)" },
-  { status: "contacted", label: "Contacted", color: "var(--color-info)" },
-  { status: "proposal", label: "Proposal", color: "var(--color-warning)" },
-  { status: "negotiation", label: "Negotiation", color: "#AF52DE" },
-  { status: "won", label: "Won", color: "var(--color-success)" },
-  { status: "lost", label: "Lost", color: "var(--color-danger)" },
+const COLUMNS: { status: LeadStatus; label: string; color: string; bg: string; badgeBg: string }[] = [
+  { status: "new",         label: "New",         color: "var(--color-text-tertiary)", bg: "var(--color-bg-muted)",     badgeBg: "rgba(0, 0, 0, 0.06)" },
+  { status: "contacted",   label: "Contacted",   color: "var(--color-info)",          bg: "rgba(0, 122, 255, 0.08)",  badgeBg: "rgba(0, 122, 255, 0.10)" },
+  { status: "proposal",    label: "Proposal",    color: "var(--color-warning)",       bg: "rgba(255, 149, 0, 0.08)",  badgeBg: "rgba(255, 149, 0, 0.12)" },
+  { status: "negotiation", label: "Negotiation", color: "#AF52DE",                    bg: "rgba(175, 82, 222, 0.08)", badgeBg: "rgba(175, 82, 222, 0.12)" },
+  { status: "won",         label: "Won",         color: "var(--color-success)",       bg: "rgba(52, 199, 89, 0.08)",  badgeBg: "rgba(52, 199, 89, 0.12)" },
+  { status: "lost",        label: "Lost",        color: "var(--color-danger)",        bg: "rgba(255, 59, 48, 0.08)",  badgeBg: "rgba(255, 59, 48, 0.12)" },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -251,15 +251,15 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
 
       {/* Kanban Board */}
       <div className={styles.board}>
-        {COLUMNS.map(({ status, label, color }) => {
+        {COLUMNS.map(({ status, label, color, bg, badgeBg }) => {
           const columnLeads = leadsByStatus.get(status) ?? [];
           const colValue = columnLeads.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
           return (
-            <div key={status} className={styles.column}>
+            <div key={status} className={styles.column} style={{ background: bg, borderTop: `3px solid ${color}` }}>
               <div className={styles.columnHeader}>
                 <span className={styles.columnDot} style={{ background: color }} />
-                <span className={styles.columnTitle}>{label}</span>
-                <span className={styles.columnCount}>{columnLeads.length}</span>
+                <span className={styles.columnTitle} style={{ color }}>{label}</span>
+                <span className={styles.columnCount} style={{ background: badgeBg, color }}>{columnLeads.length}</span>
                 {colValue > 0 && (
                   <span className={styles.columnValue}>{formatCurrency(colValue, currency)}</span>
                 )}
@@ -272,7 +272,9 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
                 onDrop={(e) => handleDrop(e, status)}
               >
                 {columnLeads.length === 0 ? (
-                  <div className={styles.emptyColumn}>No leads</div>
+                  <div className={`${styles.emptyColumn} ${draggedId ? styles.emptyColumnDragging : ""}`}>
+                    {draggedId ? "Drop here" : "No leads yet"}
+                  </div>
                 ) : (
                   columnLeads.map((lead) => {
                     const assignee = lead.assigned_to ? memberMap.get(lead.assigned_to) : null;
@@ -280,6 +282,7 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
                       <div
                         key={lead.id}
                         className={`${styles.card} ${draggedId === lead.id ? styles.cardDragging : ""}`}
+                        style={{ borderLeft: `3px solid ${color}` }}
                         draggable={canWrite}
                         onDragStart={(e) => handleDragStart(e, lead.id)}
                         onDragEnd={handleDragEnd}

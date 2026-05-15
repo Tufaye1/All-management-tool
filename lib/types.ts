@@ -9,6 +9,7 @@ export type Client = {
   contact_phone: string | null;
   status: ClientStatus;
   notes: string | null;
+  slack_channel_id: string | null;
   created_at: string;
   archived_at: string | null;
 };
@@ -24,6 +25,7 @@ export type Project = {
   status: ProjectStatus;
   start_date: string | null;
   end_date: string | null;
+  drive_folder_url: string | null;
   created_at: string;
 };
 
@@ -174,4 +176,46 @@ export type CostEntryWithClient = CostEntry & {
 
 export type InvoiceWithClient = Invoice & {
   clients: { name: string } | null;
+};
+
+/* -------- Integrations -------- */
+
+export type IntegrationProvider = "google_drive" | "slack";
+
+export type WorkspaceIntegration = {
+  id: string;
+  workspace_id: string;
+  provider: IntegrationProvider;
+  access_token: string;
+  refresh_token: string | null;
+  token_expires_at: string | null;
+  extra_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+/* -------- Project Templates -------- */
+
+export type ProjectTemplate = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type TemplateTask = {
+  id: string;
+  template_id: string;
+  title: string;
+  description: string | null;
+  function_tag: FunctionTag;
+  priority: Priority;
+  due_days_from_start: number;
+  position: number;
+};
+
+export type ProjectTemplateWithTasks = ProjectTemplate & {
+  template_tasks: TemplateTask[];
 };

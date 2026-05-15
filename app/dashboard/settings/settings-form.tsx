@@ -2,12 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X } from "lucide-react";
+import { Check, X, FolderOpen, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast";
 import { SUPPORTED_CURRENCIES, getCurrencySymbol } from "@/lib/currency";
-import type { WorkspaceRole } from "@/lib/types";
+import type { WorkspaceRole, FunctionTag, Priority } from "@/lib/types";
 import styles from "./settings.module.css";
+
+type TemplateSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  taskCount: number;
+  createdAt: string;
+};
 
 type SettingsFormProps = {
   workspaceId: string;
@@ -19,14 +27,18 @@ type SettingsFormProps = {
   userEmail: string;
   fullName: string;
   avatarUrl: string;
+  connectedProviders: string[];
+  slackTeamName: string | null;
+  templates: TemplateSummary[];
 };
 
-type Tab = "workspace" | "profile" | "security" | "danger";
+type Tab = "workspace" | "profile" | "security" | "templates" | "danger";
 
-const TABS: { key: Tab; label: string }[] = [
+const TABS: { key: Tab; label: string; adminOnly?: boolean }[] = [
   { key: "workspace", label: "Workspace" },
   { key: "profile", label: "Profile" },
   { key: "security", label: "Security" },
+  { key: "templates", label: "Templates", adminOnly: true },
   { key: "danger", label: "Danger Zone" },
 ];
 
@@ -45,13 +57,16 @@ export function SettingsForm({
   userEmail,
   fullName,
   avatarUrl,
+  connectedProviders,
+  slackTeamName,
+  templates,
 }: SettingsFormProps) {
-  const router = useRouter();
-  const { toast } = useToast();
   const isAdmin = role === "admin";
   const isOwner = userId === ownerId;
 
   const [activeTab, setActiveTab] = useState<Tab>("workspace");
+
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <div className={styles.page}>
@@ -59,9 +74,8 @@ export function SettingsForm({
         <h1 className={styles.title}>Settings</h1>
       </div>
 
-      {/* Tabs */}
       <div className={styles.tabs}>
-        {TABS.map(({ key, label }) => (
+        {visibleTabs.map(({ key, label }) => (
           <button
             key={key}
             className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
@@ -78,6 +92,8 @@ export function SettingsForm({
           workspaceName={workspaceName}
           currency={currency}
           isAdmin={isAdmin}
+          connectedProviders={connectedProviders}
+          slackTeamName={slackTeamName}
         />
       )}
       {activeTab === "profile" && (
@@ -89,9 +105,10 @@ export function SettingsForm({
         />
       )}
       {activeTab === "security" && <SecurityTab />}
-      {activeTab === "danger" && (
-        <DangerTab isOwner={isOwner} />
+      {activeTab === "templates" && isAdmin && (
+        <TemplatesTab workspaceId={workspaceId} templates={templates} />
       )}
+      {activeTab === "danger" && <DangerTab isOwner={isOwner} />}
     </div>
   );
 }
@@ -100,14 +117,18 @@ export function SettingsForm({
    WORKSPACE TAB
    ================================================================ */
 
-function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin }: {
+function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin, connectedProviders, slackTeamName }: {
   workspaceId: string; workspaceName: string; currency: string; isAdmin: boolean;
+  connectedProviders: string[]; slackTeamName: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [name, setName] = useState(workspaceName);
   const [currencyCode, setCurrencyCode] = useState(currency);
   const [isSaving, setIsSaving] = useState(false);
+
+  const driveConnected = connectedProviders.includes("google_drive");
+  const slackConnected = connectedProviders.includes("slack");
 
   async function handleSave() {
     setIsSaving(true);
@@ -129,6 +150,14 @@ function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin }: {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handleConnectDrive() {
+    window.location.href = `/api/integrations/google-drive/connect?workspaceId=${workspaceId}`;
+  }
+
+  function handleConnectSlack() {
+    window.location.href = `/api/integrations/slack/connect?workspaceId=${workspaceId}`;
   }
 
   return (
@@ -187,6 +216,55 @@ function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin }: {
       {!isAdmin && (
         <span className={styles.hint}>Only admins can edit workspace settings.</span>
       )}
+
+      {/* Integrations */}
+      <div className={styles.integrationSection}>
+        <h3 className={styles.integrationTitle}>Integrations</h3>
+
+        <div className={styles.integrationRow}>
+          <div className={styles.integrationInfo}>
+            <FolderOpen size={18} />
+            <div>
+              <span className={styles.integrationName}>Google Drive</span>
+              <span className={styles.integrationDesc}>
+                {driveConnected ? "Connected — folders auto-created for new projects" : "Auto-create project folders in Google Drive"}
+              </span>
+            </div>
+          </div>
+          {isAdmin && (
+            driveConnected ? (
+              <span className={styles.connectedBadge}>Connected</span>
+            ) : (
+              <button className="secondary" style={{ fontSize: "var(--text-sm)", padding: "var(--space-2) var(--space-4)" }} onClick={handleConnectDrive}>
+                Connect
+              </button>
+            )
+          )}
+        </div>
+
+        <div className={styles.integrationRow}>
+          <div className={styles.integrationInfo}>
+            <MessageSquare size={18} />
+            <div>
+              <span className={styles.integrationName}>Slack</span>
+              <span className={styles.integrationDesc}>
+                {slackConnected
+                  ? `Connected to ${slackTeamName ?? "workspace"}`
+                  : "View Slack messages inside client pages"}
+              </span>
+            </div>
+          </div>
+          {isAdmin && (
+            slackConnected ? (
+              <span className={styles.connectedBadge}>Connected</span>
+            ) : (
+              <button className="secondary" style={{ fontSize: "var(--text-sm)", padding: "var(--space-2) var(--space-4)" }} onClick={handleConnectSlack}>
+                Connect
+              </button>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -285,24 +363,15 @@ function SecurityTab() {
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
   async function handleUpdate() {
-    if (!hasMinLength) {
-      toast("Password must be at least 8 characters");
-      return;
-    }
-    if (!passwordsMatch) {
-      toast("Passwords do not match");
-      return;
-    }
+    if (!hasMinLength) { toast("Password must be at least 8 characters"); return; }
+    if (!passwordsMatch) { toast("Passwords do not match"); return; }
 
     setIsSaving(true);
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password: newPassword });
 
-      if (error) {
-        toast(error.message || "Failed to update password");
-        return;
-      }
+      if (error) { toast(error.message || "Failed to update password"); return; }
 
       toast("Password updated successfully");
       setCurrentPassword("");
@@ -321,26 +390,14 @@ function SecurityTab() {
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="sec-current">Current Password</label>
-        <input
-          id="sec-current"
-          className={styles.input}
-          type="password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          placeholder="Enter current password"
-        />
+        <input id="sec-current" className={styles.input} type="password" value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="sec-new">New Password</label>
-        <input
-          id="sec-new"
-          className={styles.input}
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="Enter new password"
-        />
+        <input id="sec-new" className={styles.input} type="password" value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" />
         <div className={styles.requirements}>
           <span className={`${styles.requirement} ${hasMinLength ? styles.requirementMet : ""}`}>
             {hasMinLength ? <Check size={12} /> : <X size={12} />} At least 8 characters
@@ -356,14 +413,8 @@ function SecurityTab() {
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="sec-confirm">Confirm New Password</label>
-        <input
-          id="sec-confirm"
-          className={styles.input}
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirm new password"
-        />
+        <input id="sec-confirm" className={styles.input} type="password" value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" />
         {confirmPassword && !passwordsMatch && (
           <span className={styles.hint} style={{ color: "var(--color-danger)" }}>Passwords do not match</span>
         )}
@@ -372,6 +423,155 @@ function SecurityTab() {
       <button className={`primary ${styles.saveBtn}`} onClick={handleUpdate} disabled={isSaving}>
         {isSaving ? "Updating..." : "Update Password"}
       </button>
+    </div>
+  );
+}
+
+/* ================================================================
+   TEMPLATES TAB
+   ================================================================ */
+
+const DEFAULT_TEMPLATE_TASKS: { title: string; tag: FunctionTag; priority: Priority; days: number }[] = [
+  { title: "Kickoff Meeting", tag: "strategy", priority: "high", days: 0 },
+  { title: "Market Research", tag: "analytics", priority: "high", days: 3 },
+  { title: "Strategy Development", tag: "strategy", priority: "high", days: 7 },
+  { title: "Creative Brief", tag: "content", priority: "normal", days: 10 },
+  { title: "Content Calendar", tag: "content", priority: "normal", days: 14 },
+  { title: "Ad Account Setup", tag: "ads", priority: "normal", days: 14 },
+  { title: "Campaign Launch", tag: "marketing", priority: "urgent", days: 21 },
+  { title: "Weekly Report 1", tag: "analytics", priority: "normal", days: 28 },
+  { title: "Weekly Report 2", tag: "analytics", priority: "normal", days: 35 },
+  { title: "Mid-Campaign Review", tag: "strategy", priority: "high", days: 35 },
+  { title: "Weekly Report 3", tag: "analytics", priority: "normal", days: 42 },
+  { title: "Campaign Optimization", tag: "ads", priority: "high", days: 42 },
+  { title: "Weekly Report 4", tag: "analytics", priority: "normal", days: 49 },
+  { title: "Final Report", tag: "analytics", priority: "high", days: 56 },
+  { title: "Invoice and Offboarding", tag: "admin", priority: "normal", days: 60 },
+];
+
+function TemplatesTab({ workspaceId, templates }: { workspaceId: string; templates: TemplateSummary[] }) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleCreateDefault() {
+    setIsSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: template, error: tErr } = await supabase
+        .from("project_templates")
+        .insert({ workspace_id: workspaceId, name: "Education Campaign", description: "Standard 2-month education marketing campaign with 15 tasks" })
+        .select("id")
+        .single();
+
+      if (tErr || !template) { toast("Failed to create template"); return; }
+
+      const tasks = DEFAULT_TEMPLATE_TASKS.map((t, i) => ({
+        template_id: template.id,
+        title: t.title,
+        function_tag: t.tag,
+        priority: t.priority,
+        due_days_from_start: t.days,
+        position: i,
+      }));
+
+      const { error: taskErr } = await supabase.from("template_tasks").insert(tasks);
+      if (taskErr) { toast("Template created but tasks failed"); return; }
+
+      toast("Default template created with 15 tasks");
+      router.refresh();
+    } catch {
+      toast("Failed to create template");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleCreateCustom() {
+    if (!newName.trim()) { toast("Template name required"); return; }
+    setIsSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("project_templates")
+        .insert({ workspace_id: workspaceId, name: newName.trim(), description: newDesc.trim() || null });
+
+      if (error) { toast("Failed to create template"); return; }
+      toast("Template created");
+      setNewName("");
+      setNewDesc("");
+      setIsCreating(false);
+      router.refresh();
+    } catch {
+      toast("Failed to create template");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("project_templates").delete().eq("id", id);
+    if (error) { toast("Failed to delete"); return; }
+    toast("Template deleted");
+    router.refresh();
+  }
+
+  return (
+    <div className={styles.card}>
+      <h2 className={styles.cardTitle}>Project Templates</h2>
+      <span className={styles.hint}>Templates auto-create tasks when starting a new project.</span>
+
+      {templates.length === 0 && !isCreating && (
+        <div className={styles.emptyTemplates}>
+          <p>No templates yet.</p>
+          <button className="primary" onClick={handleCreateDefault} disabled={isSaving} style={{ fontSize: "var(--text-sm)" }}>
+            {isSaving ? "Creating..." : "Create Default Template"}
+          </button>
+          <span className={styles.hint}>Creates an &quot;Education Campaign&quot; template with 15 tasks.</span>
+        </div>
+      )}
+
+      {templates.length > 0 && (
+        <div className={styles.templateList}>
+          {templates.map((t) => (
+            <div key={t.id} className={styles.templateItem}>
+              <div className={styles.templateInfo}>
+                <span className={styles.templateName}>{t.name}</span>
+                {t.description && <span className={styles.templateDesc}>{t.description}</span>}
+                <span className={styles.templateMeta}>{t.taskCount} task{t.taskCount !== 1 ? "s" : ""}</span>
+              </div>
+              <button className={styles.templateDeleteBtn} onClick={() => handleDelete(t.id)} title="Delete template">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isCreating && templates.length > 0 && (
+        <button className="secondary" onClick={() => setIsCreating(true)} style={{ fontSize: "var(--text-sm)", alignSelf: "flex-start" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <Plus size={14} /> New Template
+          </span>
+        </button>
+      )}
+
+      {isCreating && (
+        <div className={styles.templateForm}>
+          <input className={styles.input} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Template name" />
+          <input className={styles.input} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)" style={{ maxWidth: "100%" }} />
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <button className="primary" onClick={handleCreateCustom} disabled={isSaving} style={{ fontSize: "var(--text-sm)" }}>
+              {isSaving ? "Creating..." : "Create"}
+            </button>
+            <button className="secondary" onClick={() => setIsCreating(false)} style={{ fontSize: "var(--text-sm)" }}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -389,7 +589,6 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
 
   async function handleDeleteAccount() {
     if (confirmText !== "DELETE") return;
-
     toast("Account deletion requires admin action in Supabase. Contact support.");
     setShowDeleteModal(false);
     setConfirmText("");
@@ -397,20 +596,12 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
 
   async function handleLeaveWorkspace() {
     if (confirmText !== "LEAVE") return;
-
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
-      .from("workspace_members")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (error) {
-      toast("Failed to leave workspace");
-      return;
-    }
+    const { error } = await supabase.from("workspace_members").delete().eq("user_id", user.id);
+    if (error) { toast("Failed to leave workspace"); return; }
 
     toast("You have left the workspace");
     await supabase.auth.signOut();
@@ -428,9 +619,7 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
               <span className={styles.dangerLabel}>Leave Workspace</span>
               <span className={styles.dangerHint}>Remove yourself from this workspace. You will lose access to all data.</span>
             </div>
-            <button className={styles.dangerBtn} onClick={() => setShowLeaveModal(true)}>
-              Leave
-            </button>
+            <button className={styles.dangerBtn} onClick={() => setShowLeaveModal(true)}>Leave</button>
           </div>
         )}
 
@@ -439,13 +628,10 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
             <span className={styles.dangerLabel}>Delete Account</span>
             <span className={styles.dangerHint}>Permanently delete your account and all associated data. This cannot be undone.</span>
           </div>
-          <button className={styles.dangerBtn} onClick={() => setShowDeleteModal(true)}>
-            Delete Account
-          </button>
+          <button className={styles.dangerBtn} onClick={() => setShowDeleteModal(true)}>Delete Account</button>
         </div>
       </div>
 
-      {/* Delete Account Modal */}
       {showDeleteModal && (
         <div className={styles.modalOverlay} onClick={() => { setShowDeleteModal(false); setConfirmText(""); }}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -453,22 +639,12 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
             <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
               This action is permanent and cannot be undone. Type <strong>DELETE</strong> to confirm.
             </p>
-            <input
-              className={styles.input}
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type DELETE"
-              style={{ maxWidth: "100%" }}
-            />
+            <input className={styles.input} type="text" value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)} placeholder="Type DELETE" style={{ maxWidth: "100%" }} />
             <div className={styles.modalActions}>
               <button className="secondary" onClick={() => { setShowDeleteModal(false); setConfirmText(""); }}>Cancel</button>
-              <button
-                className={styles.dangerBtn}
-                onClick={handleDeleteAccount}
-                disabled={confirmText !== "DELETE"}
-                style={{ opacity: confirmText !== "DELETE" ? 0.5 : 1 }}
-              >
+              <button className={styles.dangerBtn} onClick={handleDeleteAccount}
+                disabled={confirmText !== "DELETE"} style={{ opacity: confirmText !== "DELETE" ? 0.5 : 1 }}>
                 Delete Account
               </button>
             </div>
@@ -476,7 +652,6 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
         </div>
       )}
 
-      {/* Leave Workspace Modal */}
       {showLeaveModal && (
         <div className={styles.modalOverlay} onClick={() => { setShowLeaveModal(false); setConfirmText(""); }}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -484,22 +659,12 @@ function DangerTab({ isOwner }: { isOwner: boolean }) {
             <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
               You will lose access to all workspace data. Type <strong>LEAVE</strong> to confirm.
             </p>
-            <input
-              className={styles.input}
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type LEAVE"
-              style={{ maxWidth: "100%" }}
-            />
+            <input className={styles.input} type="text" value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)} placeholder="Type LEAVE" style={{ maxWidth: "100%" }} />
             <div className={styles.modalActions}>
               <button className="secondary" onClick={() => { setShowLeaveModal(false); setConfirmText(""); }}>Cancel</button>
-              <button
-                className={styles.dangerBtn}
-                onClick={handleLeaveWorkspace}
-                disabled={confirmText !== "LEAVE"}
-                style={{ opacity: confirmText !== "LEAVE" ? 0.5 : 1 }}
-              >
+              <button className={styles.dangerBtn} onClick={handleLeaveWorkspace}
+                disabled={confirmText !== "LEAVE"} style={{ opacity: confirmText !== "LEAVE" ? 0.5 : 1 }}>
                 Leave Workspace
               </button>
             </div>
