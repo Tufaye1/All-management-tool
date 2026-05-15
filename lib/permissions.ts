@@ -15,6 +15,9 @@ export type Permission =
   | "tasks:read"
   | "tasks:write_own"
   | "tasks:write_all"
+  // Leads / CRM
+  | "leads:read"
+  | "leads:write"
   // Finance
   | "finance:read"
   | "finance:write"
@@ -30,6 +33,7 @@ const PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "clients:read", "clients:write",
     "projects:read", "projects:write",
     "tasks:read", "tasks:write_own", "tasks:write_all",
+    "leads:read", "leads:write",
     "finance:read", "finance:write",
     "team:read", "team:invite", "team:manage",
     "dashboard:read",
@@ -38,6 +42,7 @@ const PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "clients:read", "clients:write",
     "projects:read", "projects:write",
     "tasks:read", "tasks:write_own", "tasks:write_all",
+    "leads:read", "leads:write",
     "team:read",
     "dashboard:read",
   ],
@@ -45,6 +50,7 @@ const PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "clients:read",
     "projects:read",
     "tasks:read", "tasks:write_own",
+    "leads:read",
     "team:read",
     "dashboard:read",
   ],
@@ -60,6 +66,7 @@ const PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "clients:read",
     "projects:read",
     "tasks:read",
+    "leads:read",
     "team:read",
     "dashboard:read",
   ],
@@ -83,12 +90,14 @@ export function getPermissions(role: WorkspaceRole): Permission[] {
 /** Sidebar nav visibility rules */
 export function canSeeNavItem(role: WorkspaceRole, item: string): boolean {
   switch (item) {
+    case "leads":
+      return hasPermission(role, "leads:read");
     case "finance":
       return hasPermission(role, "finance:read");
     case "team":
       return hasPermission(role, "team:read");
     case "settings":
-      return role === "admin";
+      return true;
     default:
       return true;
   }

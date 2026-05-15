@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   const [membershipResult, profileResult] = await Promise.all([
     supabase
       .from("workspace_members")
-      .select("role")
+      .select("workspace_id, role")
       .eq("user_id", user.id)
       .limit(1)
       .single(),
@@ -33,11 +33,18 @@ export default async function DashboardLayout({
 
   const role: WorkspaceRole = (membershipResult.data?.role as WorkspaceRole) ?? "viewer";
   const fullName = profileResult.data?.full_name ?? null;
+  const workspaceId = membershipResult.data?.workspace_id ?? "";
 
   return (
     <ToastProvider>
       <div style={{ background: "var(--color-bg-app)", minHeight: "100vh" }}>
-        <DashboardNav email={user.email ?? ""} role={role} fullName={fullName} />
+        <DashboardNav
+          email={user.email ?? ""}
+          role={role}
+          fullName={fullName}
+          userId={user.id}
+          workspaceId={workspaceId}
+        />
         <main className={styles.main}>
           {children}
         </main>

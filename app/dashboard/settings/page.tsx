@@ -14,38 +14,44 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  const { data: membership } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
+  const [membershipResult, profileResult] = await Promise.all([
+    supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single(),
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
-  if (!membership) {
+  if (!membershipResult.data) {
     redirect("/dashboard");
   }
 
-  const role = membership.role as WorkspaceRole;
-
-  if (role !== "admin") {
-    redirect("/dashboard");
-  }
+  const role = membershipResult.data.role as WorkspaceRole;
+  const workspaceId = membershipResult.data.workspace_id;
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("id, name, currency")
-    .eq("id", membership.workspace_id)
+    .select("id, name, currency, owner_id")
+    .eq("id", workspaceId)
     .single();
-
-  if (!workspace) {
-    redirect("/dashboard");
-  }
 
   return (
     <SettingsForm
-      workspaceId={workspace.id}
-      workspaceName={workspace.name}
-      currency={workspace.currency ?? "USD"}
+      workspaceId={workspace?.id ?? workspaceId}
+      workspaceName={workspace?.name ?? ""}
+      currency={workspace?.currency ?? "USD"}
+      ownerId={workspace?.owner_id ?? ""}
+      role={role}
+      userId={user.id}
+      userEmail={user.email ?? ""}
+      fullName={profileResult.data?.full_name ?? ""}
+      avatarUrl={profileResult.data?.avatar_url ?? ""}
     />
   );
 }

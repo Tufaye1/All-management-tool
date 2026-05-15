@@ -16,6 +16,46 @@
   color: var(--color-text-primary);
 }
 
+/* -------- iOS Segmented Tabs -------- */
+
+.tabs {
+  display: flex;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: var(--space-6);
+  width: fit-content;
+  gap: 2px;
+}
+
+.tab {
+  background: none;
+  padding: var(--space-2) var(--space-5);
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.tab:hover {
+  color: var(--color-text-primary);
+}
+
+.tab:active {
+  transform: none;
+}
+
+.tabActive {
+  background: var(--color-bg-card);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* -------- Card Section -------- */
+
 .card {
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
@@ -48,6 +88,12 @@
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   margin-top: var(--space-1);
+}
+
+.readOnly {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  padding: var(--space-2) 0;
 }
 
 .input {
@@ -92,4 +138,133 @@
 .saveBtn {
   align-self: flex-start;
   margin-top: var(--space-2);
+}
+
+/* -------- Password Requirements -------- */
+
+.requirements {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.requirement {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.requirementMet {
+  color: var(--color-success);
+}
+
+/* -------- Danger Zone -------- */
+
+.dangerCard {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  border: 1px solid var(--color-danger-light);
+}
+
+.dangerItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.dangerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dangerLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.dangerHint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.dangerBtn {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-semibold);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.dangerBtn:hover {
+  background: var(--color-danger);
+  color: var(--color-primary-text);
+}
+
+.dangerBtn:active {
+  transform: scale(0.97);
+}
+
+/* -------- Confirm Modal -------- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: var(--space-4);
+}
+
+.modal {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-danger);
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .dangerItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

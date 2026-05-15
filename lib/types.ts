@@ -89,6 +89,29 @@ export type Invitation = {
   created_at: string;
 };
 
+/* -------- Leads / CRM -------- */
+
+export type LeadSource = "referral" | "website" | "social_media" | "cold_outreach" | "event" | "other";
+export type LeadStatus = "new" | "contacted" | "proposal" | "negotiation" | "won" | "lost";
+
+export type Lead = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  source: LeadSource | null;
+  status: LeadStatus;
+  assigned_to: string | null;
+  notes: string | null;
+  estimated_value: number | null;
+  lost_reason: string | null;
+  won_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /* -------- Workspace -------- */
 
 export type Workspace = {

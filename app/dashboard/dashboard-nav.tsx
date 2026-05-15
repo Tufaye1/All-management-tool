@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, CheckSquare, Users, DollarSign, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, Settings, LogOut, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { canSeeNavItem } from "@/lib/permissions";
+import { NotificationBell } from "@/components/notifications";
 import type { WorkspaceRole } from "@/lib/types";
 import styles from "./nav.module.css";
 
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
   { href: "/dashboard/clients", label: "Clients", icon: Building2, exact: false, key: "clients" },
   { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare, exact: false, key: "tasks" },
+  { href: "/dashboard/leads", label: "Leads", icon: Target, exact: false, key: "leads" },
   { href: "/dashboard/team", label: "Team", icon: Users, exact: false, key: "team" },
   { href: "/dashboard/finance", label: "Finance", icon: DollarSign, exact: false, key: "finance" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false, key: "settings" },
@@ -26,9 +28,11 @@ type DashboardNavProps = {
   email: string;
   role: WorkspaceRole;
   fullName: string | null;
+  userId: string;
+  workspaceId: string;
 };
 
-export function DashboardNav({ email, role, fullName }: DashboardNavProps) {
+export function DashboardNav({ email, role, fullName, userId, workspaceId }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,6 +74,7 @@ export function DashboardNav({ email, role, fullName }: DashboardNavProps) {
           <Link href="/dashboard" className={styles.logo} onClick={() => setSidebarOpen(false)}>
             Agency OS
           </Link>
+          <NotificationBell userId={userId} workspaceId={workspaceId} role={role} />
         </div>
 
         <nav className={styles.links}>
