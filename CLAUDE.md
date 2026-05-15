@@ -65,16 +65,15 @@ Before writing any UI component, **read `styles/design-system.css`** and use onl
 
 ---
 
-## ROADMAP — current focus
+## ROADMAP — current status
 
-We are building in tiny daily chunks. The current week is the only week that matters.
+- **Week 1:** ✅ Hello world deployed → Supabase setup → Clients CRUD page
+- **Week 2:** ✅ Projects + Tasks tables → List view of tasks with filters
+- **Week 3:** ✅ Team members, invite flow, 5 roles + permission gating
+- **Week 4:** ✅ Admin dashboard → v1 shipped internally
+- **Post-v1:** ✅ Finance module — dashboard, revenue/cost tracking, invoice generator, workspace currency setting
 
-- **Week 1:** Hello world deployed → Supabase setup → Clients CRUD page
-- **Week 2:** Projects + Tasks tables → List view of tasks with filters
-- **Week 3:** Team members, invite flow, 5 roles + permission gating
-- **Week 4:** Admin dashboard → ship v1 internally
-
-After v1 ships, we use the tool for 1–2 weeks before adding anything new.
+**Current phase:** v1 is live. Finance module is complete. Next: integrations (Slack, Google Drive, Calendar) and any UX fixes from team testing.
 
 Full plan is in `docs/brainstorm.md` — read it once at project start.
 
@@ -99,69 +98,164 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 
 ---
 
-## Current State
+## What's been built — module status
 
-### Database tables (Supabase)
-| Table | Purpose |
-|-------|---------|
-| `workspaces` | Multi-tenant container. Every data row has `workspace_id`. Owner tracked via `owner_id`. |
-| `workspace_members` | Links users to workspaces with a role (`admin`, `account_lead`, `team_member`, `finance`, `viewer`). |
-| `clients` | Agency clients. Has `status` (active/paused/completed), contact info, `archived_at` for soft delete. |
-| `projects` | Belongs to a client. Has `status` (planning/active/review/completed/paused), start/end dates. |
-| `tasks` | Belongs to a project + client. Dual-tagged: `project_id` and `function_tag`. Has priority, assignee, due date, position for ordering. |
-| `invitations` | Pending team invites. Stores `email`, `role`, `token` (UUID), `expires_at`, `accepted_at`. |
-| `profiles` | User profiles. `id` references `auth.users(id)`. Stores `full_name`, `avatar_url`. Auto-created on signup via trigger. |
+| Module | Status | Key files |
+|--------|--------|-----------|
+| **Auth** | ✅ Complete | `/login`, `/signup`, `/auth/callback`, `/accept-invite` |
+| **Dashboard** | ✅ Complete | `/dashboard` — stat cards (clients, tasks, projects counts), recent clients, upcoming tasks |
+| **Clients** | ✅ Complete | `/dashboard/clients` — list + add/edit modals. `/dashboard/clients/[clientId]` — detail with Overview/Projects tabs, project cards |
+| **Tasks** | ✅ Complete | `/dashboard/tasks` — list view + kanban toggle, 5 filter dropdowns, task detail slide-in panel, drag-and-drop status changes |
+| **Team** | ✅ Complete | `/dashboard/team` — member list (role management, remove), pending invitations (copy link, revoke) |
+| **Finance** | ✅ Complete | `/dashboard/finance` — revenue/cost tracking, per-client P&L, invoices table, recent transactions. `/dashboard/finance/invoice-generator` — full invoice builder with line items, PDF generation, saves to DB |
+| **Settings** | ✅ Complete | `/dashboard/settings` — workspace name + currency dropdown (admin only) |
+| **Integrations** | ❌ Not started | Slack, Google Drive, Google Calendar — planned for post-v1 |
 
-All tables have RLS policies enforcing workspace isolation. Two triggers on `auth.users`:
+---
+
+## Database tables (Supabase)
+
+| Table | Purpose | Key columns |
+|-------|---------|-------------|
+| `workspaces` | Multi-tenant container. Every data row has `workspace_id`. | `id`, `name`, `owner_id`, `currency` (text, default 'USD') |
+| `workspace_members` | Links users to workspaces with a role. | `workspace_id`, `user_id`, `role` |
+| `clients` | Agency clients. Soft delete via `archived_at`. | `workspace_id`, `name`, `status` (active/paused/completed), `contact_name`, `contact_email`, `contact_phone` |
+| `projects` | Belongs to a client. | `workspace_id`, `client_id`, `name`, `status` (planning/active/review/completed/paused), `start_date`, `end_date` |
+| `tasks` | Dual-tagged: `project_id` + `function_tag`. | `workspace_id`, `project_id`, `client_id`, `title`, `status` (todo/in_progress/review/done/blocked), `function_tag`, `assignee_id`, `priority`, `position`, `due_date` |
+| `invitations` | Pending team invites. | `workspace_id`, `email`, `role`, `token` (UUID), `expires_at`, `accepted_at` |
+| `profiles` | User profiles. Auto-created via trigger. | `id` (refs auth.users), `full_name`, `avatar_url` |
+| `revenue_entries` | Revenue line items per client. | `workspace_id`, `client_id`, `amount`, `description`, `date` |
+| `cost_entries` | Cost line items per client. Client is required (not nullable). | `workspace_id`, `client_id`, `amount`, `category` (ad_spend/freelancer/tools/other), `description`, `date` |
+| `invoices` | Invoice records. Status manually updated. | `workspace_id`, `client_id`, `invoice_number`, `amount`, `status` (unpaid/paid/overdue), `due_date`, `paid_date`, `notes` |
+
+**RLS:** All tables have Row Level Security policies enforcing workspace isolation.
+
+**Triggers on `auth.users`:**
 - `handle_new_user`: checks invitations → joins existing workspace or creates new one
-- `handle_new_profile`: creates a profile row with full_name from signup metadata
+- `handle_new_profile`: creates a profile row with `full_name` from signup metadata
 
-### App routes
+---
+
+## App routes
+
 | Route | Type | Description |
 |-------|------|-------------|
 | `/` | Server redirect | Sends to `/dashboard` or `/login` |
 | `/login` | Client component | Email/password + Google OAuth |
 | `/signup` | Client component | Name + email + password, email confirmation |
 | `/auth/callback` | Route handler | OAuth code exchange |
-| `/dashboard` | Server component | Admin dashboard — stats, recent clients, upcoming tasks. Loading skeleton. |
-| `/dashboard/clients` | Server + Client | Client list with add/edit modals. Loading skeleton. |
-| `/dashboard/clients/[clientId]` | Server + Client | Client detail with breadcrumbs, iOS segmented tabs (Overview / Projects), project cards. Loading skeleton. |
-| `/dashboard/tasks` | Server + Client | List + Kanban toggle. 5 filter dropdowns, mobile bottom sheet. Task detail slide-in panel. Loading skeleton. |
-| `/dashboard/team` | Server + Client | Team member list (role management, remove with confirmation), pending invitations (copy link, revoke). Loading skeleton. |
-| `/dashboard/finance` | Static placeholder | "Coming after v1 ships" |
-| `/accept-invite` | Client component | Public page — validates invite token, accepts invitation, adds user to workspace |
+| `/accept-invite` | Client component | Public page — validates invite token, accepts invitation |
+| `/dashboard` | Server component | Admin dashboard — stats, recent clients, upcoming tasks |
+| `/dashboard/clients` | Server + Client | Client list with add/edit modals |
+| `/dashboard/clients/[clientId]` | Server + Client | Client detail with breadcrumbs, iOS segmented tabs (Overview / Projects) |
+| `/dashboard/tasks` | Server + Client | List + Kanban toggle, 5 filter dropdowns, mobile bottom sheet, task detail slide-in panel |
+| `/dashboard/team` | Server + Client | Team member list, pending invitations |
+| `/dashboard/finance` | Server + Client | Finance dashboard — stat cards, per-client P&L, invoices table, recent transactions |
+| `/dashboard/finance/invoice-generator` | Server + Client | Full invoice builder — line items grid, PDF generation + DB save |
+| `/dashboard/settings` | Server + Client | Workspace settings — name, currency (admin only) |
 
-### Permissions system (`lib/permissions.ts`)
-Role-based permission matrix with 13 permissions across 6 domains (clients, projects, tasks, finance, team, dashboard).
-- `hasPermission(role, permission)` — server-side checks in page.tsx files
-- `usePermissions()` hook — client-side checks
-- `<PermissionGate>` component — declarative access control in JSX
-- Sidebar nav items filtered by role (Finance hidden from non-finance roles)
-- Add/Edit buttons gated: clients:write, projects:write, tasks:write_own, team:invite, team:manage
+All dashboard routes have `loading.tsx` with shimmer skeletons.
 
-### Shared components (`components/`)
+---
+
+## Lib modules
+
+| File | Purpose |
+|------|---------|
+| `lib/supabase/client.ts` | Browser Supabase client (`createBrowserClient`) |
+| `lib/supabase/server.ts` | Server Supabase client (`createServerClient` with cookies) |
+| `lib/types.ts` | All shared TypeScript types: `Client`, `Project`, `Task`, `Workspace`, `RevenueEntry`, `CostEntry`, `Invoice`, `InvoiceWithClient`, etc. |
+| `lib/permissions.ts` | Role-based permission matrix. 13 permissions across 6 domains. `hasPermission()`, `canSeeNavItem()`. Settings nav gated to admin. |
+| `lib/currency.ts` | `getCurrencySymbol(code)`, `formatCurrency(amount, code)`, `formatCurrencyPrecise(amount, code)`. Supports: USD ($), BDT (৳), EUR (€), GBP (£), INR (₹), AED (د.إ). |
+
+---
+
+## Shared components (`components/`)
+
 | Component | Purpose |
 |-----------|---------|
 | `<ToastProvider>` + `useToast()` | Toast notifications for all success/error actions. Wraps dashboard layout. |
 | `<Breadcrumbs>` | Chevron-separated navigation trail. Used on client detail page. |
-| `<Skeleton>` + `<PageSkeleton>` | Shimmer loading skeletons matching page content shapes. Used via `loading.tsx` in every route. |
+| `<Skeleton>` + `<PageSkeleton>` | Shimmer loading skeletons matching page content shapes. |
 | `<PermissionGate>` | Conditional rendering based on role/permission. |
 
-### Sidebar navigation
-240px fixed sidebar (hamburger on mobile). Nav items filtered by role. Shows user's full name (from profiles table) + email. Sign out at bottom.
+---
 
-### Key UI patterns
-- **Task detail panel:** Slide-in from right (440px desktop, full screen mobile). Inline editable title/description. Auto-save with debounce. Fields grid for status/priority/function/assignee/due date.
-- **Kanban view:** 5 columns by status. Drag-and-drop to change status. Cards show title, priority pill, assignee avatar, due date. View preference persisted in localStorage.
+## Permissions system
+
+5 roles: `admin`, `account_lead`, `team_member`, `finance`, `viewer`.
+
+| Permission | admin | account_lead | team_member | finance | viewer |
+|------------|-------|--------------|-------------|---------|--------|
+| clients:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
+| projects:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
+| tasks:read/write_own/write_all | ✅/✅/✅ | ✅/✅/✅ | ✅/✅/❌ | ✅/❌/❌ | ✅/❌/❌ |
+| finance:read/write | ✅/✅ | ❌/❌ | ❌/❌ | ✅/✅ | ❌/❌ |
+| team:read/invite/manage | ✅/✅/✅ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ |
+| Settings page | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+## Sidebar navigation
+
+240px fixed sidebar (hamburger on mobile). Nav items: Dashboard, Clients, Tasks, Team, Finance, Settings. Filtered by role. Shows user's full name + email. Sign out at bottom.
+
+---
+
+## Key UI patterns
+
+- **Task detail panel:** Slide-in from right (440px desktop, full screen mobile). Inline editable title/description. Auto-save with debounce.
+- **Kanban view:** 5 columns by status. Drag-and-drop to change status. View preference persisted in localStorage.
 - **View toggle:** iOS-style segmented control (List | Board) on tasks page.
+- **Finance dashboard:** 4 stat cards (revenue, costs, net profit, outstanding). Per-client P&L table. Invoices table with Mark Paid + Download PDF. Recent transactions list.
+- **Invoice generator:** Left settings sidebar (language, currency, tax label). Main form: logo upload, billing from/to, meta fields, line items grid (CSS Grid, 7 columns), notes, discount, totals. Generates PDF via `@react-pdf/renderer` and saves to DB.
+- **Currency system:** Workspace-level currency stored in `workspaces.currency`. `lib/currency.ts` provides formatting helpers used across all finance pages. No hardcoded `$` anywhere.
 - **Page titles:** Each route exports `metadata.title`, root layout uses `%s — Agency OS` template.
-- **Page transitions:** Subtle fade-in animation on route changes.
-- **Toast notifications:** Success/error/info toasts on all CRUD actions across clients, projects, tasks, invitations.
+- **Toast notifications:** Success/error toasts on all CRUD actions.
 
-### Known limitations
-- **Invite flow uses shareable links** (copy-paste) instead of email delivery, because we only have the anon key (not service role key).
-- **Profiles table SQL must be run manually** in Supabase SQL Editor (profiles table, RLS policies, trigger, backfill).
+---
 
-### Where we stopped
-- Week 3–4 complete: permissions, profiles, task detail panel, kanban, UX polish all built.
-- v1 is feature-complete for internal launch. Next: deploy to Vercel, test with team for 1–2 weeks, then iterate.
+## Finance module — technical details
+
+**Important field names (match DB exactly):**
+- `revenue_entries`: uses `date` (not `entry_date`), `client_id`, `amount`, `description`
+- `cost_entries`: uses `date` (not `entry_date`), `client_id` (required, not nullable), `category`, `amount`
+- `invoices`: uses `created_at` (not `issued_date`), `status` CHECK constraint allows only `unpaid`, `paid`, `overdue`
+
+**Invoice generator flow:**
+1. User fills form → clicks "Generate Document"
+2. PDF generated client-side via `@react-pdf/renderer` → downloaded as `INV-XXX.pdf`
+3. Invoice saved to `invoices` table with status `unpaid`
+4. Redirects back to `/dashboard/finance`
+
+**CSS note:** CSS Modules `composes` property cannot be used inside `@media` blocks (Turbopack limitation). Use explicit declarations instead.
+
+---
+
+## Known issues
+
+1. **Invite flow uses shareable links** (copy-paste) instead of email delivery — we only have the anon key, not service role key.
+2. **Profiles table SQL must be run manually** in Supabase SQL Editor (profiles table, RLS policies, trigger, backfill).
+3. **Invoice PDF is simple format** — the `invoice-pdf.tsx` used from the finance dashboard "Download PDF" button generates a basic single-amount PDF. The full invoice generator at `/dashboard/finance/invoice-generator` produces a detailed line-items PDF via `invoice-document.tsx`.
+4. **No RLS policies on finance tables** — `revenue_entries`, `cost_entries`, `invoices` need RLS policies added in Supabase. Currently relying on app-level `workspace_id` filtering only.
+5. **No loading skeleton for settings page** — minor, add `app/dashboard/settings/loading.tsx` when convenient.
+6. **`workspaces.currency` column** — must be added manually via SQL: `ALTER TABLE public.workspaces ADD COLUMN currency text NOT NULL DEFAULT 'USD';`
+
+---
+
+## Next session starts here
+
+The finance module and currency system are complete. Here's what to build next:
+
+### Immediate priorities
+1. **Add RLS policies to finance tables** — `revenue_entries`, `cost_entries`, `invoices` all need workspace isolation RLS. Match the pattern used on `clients`/`projects`/`tasks`.
+2. **Add `loading.tsx` to settings route** — simple skeleton, follow existing pattern.
+3. **Test finance module end-to-end** — add revenue, add cost, create invoice, mark paid, download PDF, change currency in settings, verify it updates everywhere.
+
+### Next features (post-v1 iteration)
+4. **Dashboard enhancements** — add finance summary cards (monthly revenue, outstanding invoices) to the main `/dashboard` page.
+5. **Slack integration** — read messages via Slack API, display in a sidebar or dedicated page.
+6. **Google Drive integration** — link project folders, show recent files per client.
+7. **Google Calendar integration** — show upcoming meetings, sync deadlines.
+8. **Reports/export** — monthly P&L report, CSV export of transactions.
+9. **Dark mode** — all `var(--color-*)` references are in place, just need to add the alternate values.
