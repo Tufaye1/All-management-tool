@@ -87,11 +87,13 @@ function AcceptInviteContent() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      // Not logged in — send to login with redirect back here
       const currentUrl = window.location.href;
       router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`);
       return;
     }
 
+    // Check if the trigger already added this user to the workspace on signup
     const { data: existing } = await supabase
       .from("workspace_members")
       .select("id")
@@ -100,16 +102,20 @@ function AcceptInviteContent() {
       .limit(1);
 
     if (existing && existing.length > 0) {
+      // Trigger handled it — just ensure invitation is marked accepted
       await supabase
         .from("invitations")
         .update({ accepted_at: new Date().toISOString() })
-        .eq("id", invite.id);
+        .eq("id", invite.id)
+        .is("accepted_at", null);
 
       setStatus("accepted");
       setTimeout(() => router.push("/dashboard"), 1500);
       return;
     }
 
+    // Fallback: trigger didn't fire (existing user accepting invite)
+    // Add them to the workspace manually
     const { error: memberError } = await supabase
       .from("workspace_members")
       .insert({
@@ -124,10 +130,12 @@ function AcceptInviteContent() {
       return;
     }
 
+    // Mark invitation as accepted
     await supabase
       .from("invitations")
       .update({ accepted_at: new Date().toISOString() })
-      .eq("id", invite.id);
+      .eq("id", invite.id)
+      .is("accepted_at", null);
 
     setStatus("accepted");
     setTimeout(() => router.push("/dashboard"), 1500);

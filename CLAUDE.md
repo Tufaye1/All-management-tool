@@ -132,7 +132,7 @@ All tables have RLS policies enforcing workspace isolation. A `handle_new_user` 
 240px fixed sidebar (hamburger on mobile) with: Dashboard, Clients, Tasks, Team, Finance. User avatar + sign out at bottom.
 
 ### Known bugs / incomplete items
-- **Trigger bug (not yet fixed):** When an invited user signs up, the `handle_new_user` trigger creates a NEW workspace for them instead of adding them to the inviter's workspace. The trigger needs to check the `invitations` table first. SQL fix is written but not yet applied.
+- **Trigger bug (fixed):** The `handle_new_user` trigger now checks the `invitations` table before creating a workspace. If a pending invitation matches the new user's email, the trigger adds them to the inviter's workspace with the invited role and marks the invitation accepted. The accept-invite page has a fallback for existing users (trigger only fires on signup).
 - **Member email resolution:** The team page can only show the current user's email/name. Other members show truncated user IDs. Needs a `profiles` table or service-role API call to resolve all emails.
 - **Invite flow uses shareable links** (copy-paste) instead of email delivery, because we only have the anon key (not service role key).
 
