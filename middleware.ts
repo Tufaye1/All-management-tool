@@ -34,9 +34,13 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  // Use getSession() in middleware for speed — it decodes the JWT locally
+  // without a network call. Full verification via getUser() happens in each
+  // page's server component, so this is safe for redirect logic only.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const isProtected = PROTECTED_ROUTES.some((route) =>
     request.nextUrl.pathname.startsWith(route),
