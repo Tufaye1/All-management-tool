@@ -7,7 +7,7 @@
 
 ## What we're building
 
-An internal operations platform for an education marketing agency. Project management is the spine — clients, projects, tasks. Finance, lightweight CRM, dashboard, and integrations (Slack, Google Drive, Google Calendar) attach to it. Built internally first, architected multi-tenant so it can be sold to other agencies later.
+An internal operations platform for an education marketing agency. Project management is the spine — clients, projects, tasks. Finance, lightweight CRM, dashboard, reports, and integrations (Slack, Google Drive, Google Calendar) attach to it. Built internally first, architected multi-tenant so it can be sold to other agencies later.
 
 **Team size:** 20 users · **Concurrent clients:** 15+ · **Engagement length:** 2–3 months per client.
 
@@ -15,11 +15,11 @@ An internal operations platform for an education marketing agency. Project manag
 
 ## Tech stack — DO NOT CHANGE WITHOUT ASKING
 
-- **Framework:** Next.js (App Router) + TypeScript
+- **Framework:** Next.js 16 (App Router) + TypeScript
 - **Database / Auth / Storage:** Supabase
 - **Hosting:** Vercel
 - **Styling:** Plain CSS using variables from `styles/design-system.css`. **Do NOT use Tailwind default classes for colors, radii, or fonts.** If you need utility classes for layout, use Tailwind for `flex`, `grid`, `gap`, etc. only — never for color, font, or radius.
-- **PDF generation:** `react-pdf` (for invoices, later)
+- **PDF generation:** `@react-pdf/renderer` (for invoices)
 - **Icons:** `lucide-react` (matches the soft, rounded aesthetic)
 
 ---
@@ -42,6 +42,7 @@ Before writing any UI component, **read `styles/design-system.css`** and use onl
 8. **No emoji in UI** — use `lucide-react` icons.
 9. **Light mode only for now.** Dark mode comes later — but keep `var(--color-*)` references so the swap is easy.
 10. **Mobile-first responsive.** Every page must work on a 375px-wide screen as well as a 1440px desktop.
+11. **Inline styles for data-driven styling.** When per-item visual differences come from data (e.g., kanban column colors), use inline styles via constants — CSS Modules class lookups are unreliable for this pattern.
 
 ### Pattern library
 - **Cards:** `background: var(--color-bg-card); border-radius: var(--radius-lg); padding: var(--space-5);` — no border, optional `box-shadow: var(--shadow-sm)`.
@@ -50,6 +51,7 @@ Before writing any UI component, **read `styles/design-system.css`** and use onl
 - **Pills / status badges:** `<span class="pill pill-success">ON TRACK</span>` etc.
 - **Page background:** `var(--color-bg-app)` (#F5F5F7) — soft off-white, not pure white.
 - **Glass nav bar:** apply `.glass-bar` class for top nav / sticky bars.
+- **iOS segmented tabs:** `.tabs` / `.tab` / `.tabActive` pattern used across settings, client detail, tasks.
 
 ---
 
@@ -61,21 +63,8 @@ Before writing any UI component, **read `styles/design-system.css`** and use onl
 - **No in-app chat.** Slack integration only (read messages via Slack API).
 - **No time tracking.** Flat-fee billing.
 - **No online payments.** Invoices are PDFs. Payment status is manually marked.
-- **Views:** List view first (week 2). Kanban and Calendar come later — same data, different layouts.
-
----
-
-## ROADMAP — current status
-
-- **Week 1:** ✅ Hello world deployed → Supabase setup → Clients CRUD page
-- **Week 2:** ✅ Projects + Tasks tables → List view of tasks with filters
-- **Week 3:** ✅ Team members, invite flow, 5 roles + permission gating
-- **Week 4:** ✅ Admin dashboard → v1 shipped internally
-- **Post-v1:** ✅ Finance module — dashboard, revenue/cost tracking, invoice generator, workspace currency setting
-
-**Current phase:** v1 is live. Finance module is complete. Next: integrations (Slack, Google Drive, Calendar) and any UX fixes from team testing.
-
-Full plan is in `docs/brainstorm.md` — read it once at project start.
+- **Views:** List view + Kanban toggle on tasks page. Calendar view planned later.
+- **Middleware uses `getSession()`** not `getUser()` — avoids Vercel edge timeout. Full JWT verification happens in each page's server component.
 
 ---
 
@@ -103,13 +92,18 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 | Module | Status | Key files |
 |--------|--------|-----------|
 | **Auth** | ✅ Complete | `/login`, `/signup`, `/auth/callback`, `/accept-invite` |
-| **Dashboard** | ✅ Complete | `/dashboard` — stat cards (clients, tasks, projects counts), recent clients, upcoming tasks |
-| **Clients** | ✅ Complete | `/dashboard/clients` — list + add/edit modals. `/dashboard/clients/[clientId]` — detail with Overview/Projects tabs, project cards |
+| **Dashboard** | ✅ Complete | `/dashboard` — stat cards (clients, tasks, projects), pipeline summary, finance summary (monthly + all-time), my tasks, recent activity, recent clients |
+| **Clients** | ✅ Complete | `/dashboard/clients` — list + add/edit modals. `/dashboard/clients/[clientId]` — detail with Overview/Projects/Slack tabs, Drive folder links on project cards |
 | **Tasks** | ✅ Complete | `/dashboard/tasks` — list view + kanban toggle, 5 filter dropdowns, task detail slide-in panel, drag-and-drop status changes |
+| **Leads / CRM** | ✅ Complete | `/dashboard/leads` — kanban board (6 status columns with tinted backgrounds), lead cards with drag-and-drop, add/edit modals, pipeline value tracking |
 | **Team** | ✅ Complete | `/dashboard/team` — member list (role management, remove), pending invitations (copy link, revoke) |
 | **Finance** | ✅ Complete | `/dashboard/finance` — revenue/cost tracking, per-client P&L, invoices table, recent transactions. `/dashboard/finance/invoice-generator` — full invoice builder with line items, PDF generation, saves to DB |
-| **Settings** | ✅ Complete | `/dashboard/settings` — workspace name + currency dropdown (admin only) |
-| **Integrations** | ❌ Not started | Slack, Google Drive, Google Calendar — planned for post-v1 |
+| **Reports** | ✅ Complete | `/dashboard/reports` — monthly P&L by client, invoice summary, period selector (month/quarter/year/all-time), CSV export for revenue, costs, invoices, P&L |
+| **Settings** | ✅ Complete | `/dashboard/settings` — 5 tabs: Workspace (name, currency, integrations), Profile, Security, Templates (admin), Danger Zone |
+| **Notifications** | ✅ Complete | Bell icon in nav — shows overdue tasks, upcoming deadlines |
+| **Google Drive** | ✅ Code complete | OAuth2 flow, auto-create Drive folders on project creation, folder links on project cards. **Needs env vars:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| **Slack** | ✅ Code complete | OAuth2 flow, channel messages viewer on client detail pages, channel picker. **Needs env vars:** `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` |
+| **Project Templates** | ✅ Complete | Template management in Settings, "Education Campaign" default template with 15 tasks, template dropdown in project creation modal, auto-creates tasks with calculated due dates |
 
 ---
 
@@ -117,16 +111,20 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 
 | Table | Purpose | Key columns |
 |-------|---------|-------------|
-| `workspaces` | Multi-tenant container. Every data row has `workspace_id`. | `id`, `name`, `owner_id`, `currency` (text, default 'USD') |
-| `workspace_members` | Links users to workspaces with a role. | `workspace_id`, `user_id`, `role` |
-| `clients` | Agency clients. Soft delete via `archived_at`. | `workspace_id`, `name`, `status` (active/paused/completed), `contact_name`, `contact_email`, `contact_phone` |
-| `projects` | Belongs to a client. | `workspace_id`, `client_id`, `name`, `status` (planning/active/review/completed/paused), `start_date`, `end_date` |
-| `tasks` | Dual-tagged: `project_id` + `function_tag`. | `workspace_id`, `project_id`, `client_id`, `title`, `status` (todo/in_progress/review/done/blocked), `function_tag`, `assignee_id`, `priority`, `position`, `due_date` |
-| `invitations` | Pending team invites. | `workspace_id`, `email`, `role`, `token` (UUID), `expires_at`, `accepted_at` |
-| `profiles` | User profiles. Auto-created via trigger. | `id` (refs auth.users), `full_name`, `avatar_url` |
-| `revenue_entries` | Revenue line items per client. | `workspace_id`, `client_id`, `amount`, `description`, `date` |
-| `cost_entries` | Cost line items per client. Client is required (not nullable). | `workspace_id`, `client_id`, `amount`, `category` (ad_spend/freelancer/tools/other), `description`, `date` |
-| `invoices` | Invoice records. Status manually updated. | `workspace_id`, `client_id`, `invoice_number`, `amount`, `status` (unpaid/paid/overdue), `due_date`, `paid_date`, `notes` |
+| `workspaces` | Multi-tenant container | `id`, `name`, `owner_id`, `currency` (default 'USD') |
+| `workspace_members` | Links users to workspaces with a role | `workspace_id`, `user_id`, `role` |
+| `clients` | Agency clients. Soft delete via `archived_at` | `workspace_id`, `name`, `status`, `contact_name`, `contact_email`, `contact_phone`, `slack_channel_id` |
+| `projects` | Belongs to a client | `workspace_id`, `client_id`, `name`, `status`, `start_date`, `end_date`, `drive_folder_url` |
+| `tasks` | Dual-tagged: `project_id` + `function_tag` | `workspace_id`, `project_id`, `client_id`, `title`, `status`, `function_tag`, `assignee_id`, `priority`, `position`, `due_date` |
+| `leads` | CRM pipeline | `workspace_id`, `name`, `email`, `company`, `source`, `status`, `assigned_to`, `estimated_value`, `won_date`, `lost_reason` |
+| `invitations` | Pending team invites | `workspace_id`, `email`, `role`, `token`, `expires_at`, `accepted_at` |
+| `profiles` | User profiles (auto-created via trigger) | `id` (refs auth.users), `full_name`, `avatar_url` |
+| `revenue_entries` | Revenue line items per client | `workspace_id`, `client_id`, `amount`, `description`, `date` |
+| `cost_entries` | Cost line items per client | `workspace_id`, `client_id`, `amount`, `category`, `description`, `date` |
+| `invoices` | Invoice records | `workspace_id`, `client_id`, `invoice_number`, `amount`, `status` (unpaid/paid/overdue), `due_date`, `paid_date` |
+| `workspace_integrations` | OAuth tokens for integrations | `workspace_id`, `provider`, `access_token`, `refresh_token`, `token_expires_at`, `extra_data` |
+| `project_templates` | Reusable project task blueprints | `workspace_id`, `name`, `description`, `created_by` |
+| `template_tasks` | Tasks within a template | `template_id`, `title`, `function_tag`, `priority`, `due_days_from_start`, `position` |
 
 **RLS:** All tables have Row Level Security policies enforcing workspace isolation.
 
@@ -145,14 +143,27 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 | `/signup` | Client component | Name + email + password, email confirmation |
 | `/auth/callback` | Route handler | OAuth code exchange |
 | `/accept-invite` | Client component | Public page — validates invite token, accepts invitation |
-| `/dashboard` | Server component | Admin dashboard — stats, recent clients, upcoming tasks |
+| `/dashboard` | Server component | Dashboard — 4 stat cards, pipeline summary, finance summary, my tasks, recent activity, recent clients |
 | `/dashboard/clients` | Server + Client | Client list with add/edit modals |
-| `/dashboard/clients/[clientId]` | Server + Client | Client detail with breadcrumbs, iOS segmented tabs (Overview / Projects) |
-| `/dashboard/tasks` | Server + Client | List + Kanban toggle, 5 filter dropdowns, mobile bottom sheet, task detail slide-in panel |
+| `/dashboard/clients/[clientId]` | Server + Client | Client detail: Overview / Projects / Slack tabs. Drive folder links on project cards. Template dropdown in project creation. |
+| `/dashboard/tasks` | Server + Client | List + Kanban toggle, 5 filter dropdowns, task detail slide-in panel |
+| `/dashboard/leads` | Server + Client | CRM kanban board, 6 status columns with drag-and-drop |
 | `/dashboard/team` | Server + Client | Team member list, pending invitations |
 | `/dashboard/finance` | Server + Client | Finance dashboard — stat cards, per-client P&L, invoices table, recent transactions |
 | `/dashboard/finance/invoice-generator` | Server + Client | Full invoice builder — line items grid, PDF generation + DB save |
-| `/dashboard/settings` | Server + Client | Workspace settings — name, currency (admin only) |
+| `/dashboard/reports` | Server + Client | Monthly P&L by client, invoice summary, period selector, CSV export |
+| `/dashboard/settings` | Server + Client | 5-tab settings — Workspace (+ integrations), Profile, Security, Templates, Danger Zone |
+
+**API routes:**
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/google-drive/connect` | GET | Redirects to Google OAuth consent |
+| `/api/integrations/google-drive/callback` | GET | Exchanges code for tokens, saves to DB |
+| `/api/integrations/google-drive/create-folder` | POST | Creates Drive folder for a project |
+| `/api/integrations/slack/connect` | GET | Redirects to Slack OAuth consent |
+| `/api/integrations/slack/callback` | GET | Exchanges code for bot token, saves to DB |
+| `/api/integrations/slack/channels` | GET | Lists workspace Slack channels |
+| `/api/integrations/slack/messages` | GET | Fetches messages from a channel |
 
 All dashboard routes have `loading.tsx` with shimmer skeletons.
 
@@ -164,9 +175,12 @@ All dashboard routes have `loading.tsx` with shimmer skeletons.
 |------|---------|
 | `lib/supabase/client.ts` | Browser Supabase client (`createBrowserClient`) |
 | `lib/supabase/server.ts` | Server Supabase client (`createServerClient` with cookies) |
-| `lib/types.ts` | All shared TypeScript types: `Client`, `Project`, `Task`, `Workspace`, `RevenueEntry`, `CostEntry`, `Invoice`, `InvoiceWithClient`, etc. |
-| `lib/permissions.ts` | Role-based permission matrix. 13 permissions across 6 domains. `hasPermission()`, `canSeeNavItem()`. Settings nav gated to admin. |
-| `lib/currency.ts` | `getCurrencySymbol(code)`, `formatCurrency(amount, code)`, `formatCurrencyPrecise(amount, code)`. Supports: USD ($), BDT (৳), EUR (€), GBP (£), INR (₹), AED (د.إ). |
+| `lib/types.ts` | All shared TypeScript types: `Client`, `Project`, `Task`, `Lead`, `Workspace`, `RevenueEntry`, `CostEntry`, `Invoice`, `WorkspaceIntegration`, `ProjectTemplate`, `TemplateTask`, etc. |
+| `lib/permissions.ts` | Role-based permission matrix. 15 permissions across 7 domains (including leads). `hasPermission()`, `canSeeNavItem()`. |
+| `lib/currency.ts` | `getCurrencySymbol(code)`, `formatCurrency(amount, code)`, `formatCurrencyPrecise(amount, code)`. Supports: USD, BDT, EUR, GBP, INR, AED. |
+| `lib/hooks/use-permissions.ts` | Client-side hook for permission checking |
+| `lib/integrations/google-drive.ts` | Google Drive OAuth helpers: `buildGoogleAuthUrl()`, `exchangeGoogleCode()`, `refreshGoogleToken()`, `getGoogleAccessToken()`, `createDriveFolder()` |
+| `lib/integrations/slack.ts` | Slack API helpers: `buildSlackAuthUrl()`, `exchangeSlackCode()`, `getSlackToken()`, `listSlackChannels()`, `fetchSlackMessages()` |
 
 ---
 
@@ -174,10 +188,11 @@ All dashboard routes have `loading.tsx` with shimmer skeletons.
 
 | Component | Purpose |
 |-----------|---------|
-| `<ToastProvider>` + `useToast()` | Toast notifications for all success/error actions. Wraps dashboard layout. |
-| `<Breadcrumbs>` | Chevron-separated navigation trail. Used on client detail page. |
-| `<Skeleton>` + `<PageSkeleton>` | Shimmer loading skeletons matching page content shapes. |
-| `<PermissionGate>` | Conditional rendering based on role/permission. |
+| `<ToastProvider>` + `useToast()` | Toast notifications for all success/error actions |
+| `<Breadcrumbs>` | Chevron-separated navigation trail |
+| `<Skeleton>` + `<PageSkeleton>` + `<StatCardSkeleton>` + `<RowSkeleton>` | Shimmer loading skeletons |
+| `<PermissionGate>` | Conditional rendering based on role/permission |
+| `<NotificationBell>` | Notification bell in nav — overdue tasks, upcoming deadlines |
 
 ---
 
@@ -190,28 +205,35 @@ All dashboard routes have `loading.tsx` with shimmer skeletons.
 | clients:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
 | projects:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
 | tasks:read/write_own/write_all | ✅/✅/✅ | ✅/✅/✅ | ✅/✅/❌ | ✅/❌/❌ | ✅/❌/❌ |
+| leads:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ❌/❌ | ✅/❌ |
 | finance:read/write | ✅/✅ | ❌/❌ | ❌/❌ | ✅/✅ | ❌/❌ |
 | team:read/invite/manage | ✅/✅/✅ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ |
-| Settings page | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Settings page | ✅ (all tabs) | ✅ (no templates) | ✅ (no templates) | ✅ (no templates) | ✅ (no templates) |
+| Reports page | ✅ | ❌ | ❌ | ✅ | ❌ |
 
 ---
 
 ## Sidebar navigation
 
-240px fixed sidebar (hamburger on mobile). Nav items: Dashboard, Clients, Tasks, Team, Finance, Settings. Filtered by role. Shows user's full name + email. Sign out at bottom.
+240px fixed sidebar (hamburger on mobile). Nav items: Dashboard, Clients, Tasks, Leads, Team, Finance, Reports, Settings. Filtered by role via `canSeeNavItem()`. Shows user's full name + email + notification bell. Sign out at bottom.
 
 ---
 
 ## Key UI patterns
 
 - **Task detail panel:** Slide-in from right (440px desktop, full screen mobile). Inline editable title/description. Auto-save with debounce.
-- **Kanban view:** 5 columns by status. Drag-and-drop to change status. View preference persisted in localStorage.
+- **Kanban views:** Tasks page (5 columns by status) + Leads page (6 columns by pipeline stage). Both have drag-and-drop. Leads columns have tinted backgrounds via inline styles.
 - **View toggle:** iOS-style segmented control (List | Board) on tasks page.
 - **Finance dashboard:** 4 stat cards (revenue, costs, net profit, outstanding). Per-client P&L table. Invoices table with Mark Paid + Download PDF. Recent transactions list.
+- **Reports page:** Period selector (This Month / Last Month / This Quarter / This Year / All Time). P&L by client table. Invoice summary stats. CSV export cards for revenue, costs, invoices, P&L.
+- **Dashboard finance card:** Horizontal summary card showing monthly revenue, costs, net profit, outstanding invoices — each with all-time subtotal. Permission-gated to `finance:read`.
 - **Invoice generator:** Left settings sidebar (language, currency, tax label). Main form: logo upload, billing from/to, meta fields, line items grid (CSS Grid, 7 columns), notes, discount, totals. Generates PDF via `@react-pdf/renderer` and saves to DB.
 - **Currency system:** Workspace-level currency stored in `workspaces.currency`. `lib/currency.ts` provides formatting helpers used across all finance pages. No hardcoded `$` anywhere.
+- **Project templates:** Template dropdown in project creation modal. Selecting a template auto-creates tasks with calculated due dates based on project start_date + `due_days_from_start`.
+- **Integrations:** Connect buttons in Settings > Workspace tab. Google Drive auto-creates folders on project creation. Slack shows channel messages in client detail Slack tab.
 - **Page titles:** Each route exports `metadata.title`, root layout uses `%s — Agency OS` template.
 - **Toast notifications:** Success/error toasts on all CRUD actions.
+- **Loading skeletons:** All dashboard routes have `loading.tsx` with shimmer skeletons matching page content shapes.
 
 ---
 
@@ -237,25 +259,21 @@ All dashboard routes have `loading.tsx` with shimmer skeletons.
 1. **Invite flow uses shareable links** (copy-paste) instead of email delivery — we only have the anon key, not service role key.
 2. **Profiles table SQL must be run manually** in Supabase SQL Editor (profiles table, RLS policies, trigger, backfill).
 3. **Invoice PDF is simple format** — the `invoice-pdf.tsx` used from the finance dashboard "Download PDF" button generates a basic single-amount PDF. The full invoice generator at `/dashboard/finance/invoice-generator` produces a detailed line-items PDF via `invoice-document.tsx`.
-4. **No RLS policies on finance tables** — `revenue_entries`, `cost_entries`, `invoices` need RLS policies added in Supabase. Currently relying on app-level `workspace_id` filtering only.
-5. **No loading skeleton for settings page** — minor, add `app/dashboard/settings/loading.tsx` when convenient.
-6. **`workspaces.currency` column** — must be added manually via SQL: `ALTER TABLE public.workspaces ADD COLUMN currency text NOT NULL DEFAULT 'USD';`
+4. **Google Drive + Slack need env vars** — `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` must be set in Vercel + `.env.local` before integrations work.
+5. **Next.js 16 middleware deprecation** — middleware.ts works but shows a deprecation warning. Next.js 16 prefers `proxy` convention. Not urgent to migrate.
 
 ---
 
 ## Next session starts here
 
-The finance module and currency system are complete. Here's what to build next:
+All core modules are complete. Here's what remains:
 
-### Immediate priorities
-1. **Add RLS policies to finance tables** — `revenue_entries`, `cost_entries`, `invoices` all need workspace isolation RLS. Match the pattern used on `clients`/`projects`/`tasks`.
-2. **Add `loading.tsx` to settings route** — simple skeleton, follow existing pattern.
-3. **Test finance module end-to-end** — add revenue, add cost, create invoice, mark paid, download PDF, change currency in settings, verify it updates everywhere.
+### Remaining features
+1. **Google Calendar integration** — show upcoming meetings, sync task deadlines to calendar. OAuth2 flow + Calendar API.
+2. **Dark mode** — all `var(--color-*)` references are in place, just need alternate values in design-system.css.
+3. **Calendar view for tasks** — third view option alongside List and Board on tasks page.
 
-### Next features (post-v1 iteration)
-4. **Dashboard enhancements** — add finance summary cards (monthly revenue, outstanding invoices) to the main `/dashboard` page.
-5. **Slack integration** — read messages via Slack API, display in a sidebar or dedicated page.
-6. **Google Drive integration** — link project folders, show recent files per client.
-7. **Google Calendar integration** — show upcoming meetings, sync deadlines.
-8. **Reports/export** — monthly P&L report, CSV export of transactions.
-9. **Dark mode** — all `var(--color-*)` references are in place, just need to add the alternate values.
+### Polish & improvements
+4. **Test finance module end-to-end** — add revenue, add cost, create invoice, mark paid, download PDF, change currency, verify it updates everywhere.
+5. **Responsive audit** — test all pages at 375px width, fix any overflow or layout issues.
+6. **Performance** — consider pagination for large datasets (clients list, tasks list, leads board).

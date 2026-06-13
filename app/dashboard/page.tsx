@@ -8,6 +8,10 @@ import {
   FileText,
   Clock,
   AlertTriangle,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { hasPermission } from "@/lib/permissions";
@@ -100,6 +104,12 @@ export default async function DashboardPage() {
     recentTasksActivity,
     recentClientsActivity,
     recentLeadsActivity,
+    // Finance queries
+    monthRevenueResult,
+    monthCostsResult,
+    allRevenueResult,
+    allCostsResult,
+    outstandingInvoicesResult,
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -185,6 +195,34 @@ export default async function DashboardPage() {
       .eq("workspace_id", wid)
       .order("created_at", { ascending: false })
       .limit(3),
+    // Finance: revenue this month
+    supabase
+      .from("revenue_entries")
+      .select("amount")
+      .eq("workspace_id", wid)
+      .gte("date", monthStartStr),
+    // Finance: costs this month
+    supabase
+      .from("cost_entries")
+      .select("amount")
+      .eq("workspace_id", wid)
+      .gte("date", monthStartStr),
+    // Finance: all-time revenue
+    supabase
+      .from("revenue_entries")
+      .select("amount")
+      .eq("workspace_id", wid),
+    // Finance: all-time costs
+    supabase
+      .from("cost_entries")
+      .select("amount")
+      .eq("workspace_id", wid),
+    // Finance: outstanding invoices (unpaid + overdue)
+    supabase
+      .from("invoices")
+      .select("amount, status")
+      .eq("workspace_id", wid)
+      .in("status", ["unpaid", "overdue"]),
   ]);
 
   const activeClients = activeClientsResult.count ?? 0;
@@ -207,6 +245,18 @@ export default async function DashboardPage() {
   const wonLeads = wonLeadsResult.data ?? [];
   const wonCount = wonLeads.length;
   const wonValue = wonLeads.reduce((sum, l) => sum + (l.estimated_value ?? 0), 0);
+
+  // Finance stats
+  const monthRevenue = (monthRevenueResult.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+  const monthCosts = (monthCostsResult.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+  const monthProfit = monthRevenue - monthCosts;
+  const allRevenue = (allRevenueResult.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+  const allCosts = (allCostsResult.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+  const allProfit = allRevenue - allCosts;
+  const outstandingInvoices = outstandingInvoicesResult.data ?? [];
+  const outstandingTotal = outstandingInvoices.reduce((s, i) => s + (i.amount ?? 0), 0);
+  const hasOverdue = outstandingInvoices.some((i) => i.status === "overdue");
+  const canSeeFinance = hasPermission(role, "finance:read");
 
   // Build activity feed
   const activityItems: ActivityItem[] = [];
@@ -320,6 +370,50 @@ export default async function DashboardPage() {
                   {formatCurrency(wonValue, currency)}
                 </span>
                 <span className={styles.pipelineStatLabel}>Won Value</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Finance Summary */}
+        {canSeeFinance && (
+          <div className={styles.pipelineCard}>
+            <div className={styles.pipelineHeader}>
+              <DollarSign size={16} />
+              <span className={styles.pipelineTitle}>Finance Summary</span>
+              <Link href="/dashboard/finance" className={styles.sectionLink}>View details</Link>
+            </div>
+            <div className={styles.pipelineStats}>
+              <div className={styles.pipelineStat}>
+                <span className={styles.pipelineStatValue}>
+                  {formatCurrency(monthRevenue, currency)}
+                </span>
+                <span className={styles.pipelineStatLabel}>Revenue (this month)</span>
+                <span className={styles.financeAllTime}>{formatCurrency(allRevenue, currency)} all-time</span>
+              </div>
+              <div className={styles.pipelineDivider} />
+              <div className={styles.pipelineStat}>
+                <span className={styles.pipelineStatValue}>
+                  {formatCurrency(monthCosts, currency)}
+                </span>
+                <span className={styles.pipelineStatLabel}>Costs (this month)</span>
+                <span className={styles.financeAllTime}>{formatCurrency(allCosts, currency)} all-time</span>
+              </div>
+              <div className={styles.pipelineDivider} />
+              <div className={styles.pipelineStat}>
+                <span className={`${styles.pipelineStatValue} ${monthProfit >= 0 ? styles.pipelineWon : styles.financeNegative}`}>
+                  {formatCurrency(monthProfit, currency)}
+                </span>
+                <span className={styles.pipelineStatLabel}>Net Profit</span>
+                <span className={styles.financeAllTime}>{formatCurrency(allProfit, currency)} all-time</span>
+              </div>
+              <div className={styles.pipelineDivider} />
+              <div className={styles.pipelineStat}>
+                <span className={`${styles.pipelineStatValue} ${hasOverdue ? styles.financeNegative : ""}`}>
+                  {formatCurrency(outstandingTotal, currency)}
+                </span>
+                <span className={styles.pipelineStatLabel}>Outstanding</span>
+                <span className={styles.financeAllTime}>{outstandingInvoices.length} unpaid invoice{outstandingInvoices.length !== 1 ? "s" : ""}</span>
               </div>
             </div>
           </div>

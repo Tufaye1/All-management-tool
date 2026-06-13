@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, BarChart3, Settings, LogOut, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { canSeeNavItem } from "@/lib/permissions";
 import { NotificationBell } from "@/components/notifications";
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/leads", label: "Leads", icon: Target, exact: false, key: "leads" },
   { href: "/dashboard/team", label: "Team", icon: Users, exact: false, key: "team" },
   { href: "/dashboard/finance", label: "Finance", icon: DollarSign, exact: false, key: "finance" },
+  { href: "/dashboard/reports", label: "Reports", icon: BarChart3, exact: false, key: "reports" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false, key: "settings" },
 ];
 

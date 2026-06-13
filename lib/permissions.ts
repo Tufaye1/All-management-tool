@@ -93,6 +93,7 @@ export function canSeeNavItem(role: WorkspaceRole, item: string): boolean {
     case "leads":
       return hasPermission(role, "leads:read");
     case "finance":
+    case "reports":
       return hasPermission(role, "finance:read");
     case "team":
       return hasPermission(role, "team:read");
