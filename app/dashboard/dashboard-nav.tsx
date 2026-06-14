@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, BarChart3, Settings, LogOut, Menu, Moon, Sun } from "lucide-react";
@@ -39,6 +39,15 @@ export function DashboardNav({ email, role, fullName, userId, workspaceId }: Das
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Heartbeat: update last_seen on every dashboard page load so the team
+  // page can show a live green-dot indicator. Fire-and-forget — no UI block.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.rpc("touch_last_seen").then(() => {
+      /* noop — fire and forget */
+    });
+  }, [pathname]);
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;

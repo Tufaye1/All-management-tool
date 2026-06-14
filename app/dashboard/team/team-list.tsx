@@ -1,28 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Copy, Check, Ban, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { WorkspaceMemberWithEmail, Invitation, WorkspaceRole } from "@/lib/types";
+import { useToast } from "@/components/toast";
+import type { WorkspaceMemberWithEmail, Invitation, WorkspaceRole, WorkspaceMemberStatus } from "@/lib/types";
 import { InviteModal } from "./invite-modal";
 import styles from "./team.module.css";
 
 const ROLE_LABELS: Record<WorkspaceRole, string> = {
   admin: "Admin",
-  account_lead: "Account Lead",
   team_member: "Team Member",
-  finance: "Finance",
-  viewer: "Viewer",
+  sales: "Sales",
 };
 
 const ROLE_PILL: Record<WorkspaceRole, string> = {
   admin: styles.pillAdmin,
-  account_lead: styles.pillAccountLead,
   team_member: styles.pillTeamMember,
-  finance: styles.pillFinance,
-  viewer: styles.pillViewer,
+  sales: styles.pillSales,
 };
+
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+function isOnline(lastSeen: string | null): boolean {
+  if (!lastSeen) return false;
+  return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS;
+}
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -53,25 +57,62 @@ type TeamListProps = {
 
 export function TeamList({ members, invitations, workspaceId, currentUserId, canInvite, canManageTeam }: TeamListProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WorkspaceMemberWithEmail | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
+  const [optimisticMembers, setOptimisticMembers] = useState<WorkspaceMemberWithEmail[]>(members);
+
+  // After router.refresh() the server prop changes; re-sync optimistic state.
+  useEffect(() => {
+    setOptimisticMembers(members);
+  }, [members]);
 
   async function handleRoleChange(memberId: string, newRole: WorkspaceRole) {
+    setPendingMemberId(memberId);
+    setOptimisticMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
+
     const supabase = createClient();
     const { error } = await supabase
       .from("workspace_members")
       .update({ role: newRole })
       .eq("id", memberId);
 
+    setPendingMemberId(null);
     if (error) {
-      console.error("Failed to update role:", error.message);
+      toast("Failed to update role");
+      setOptimisticMembers(members);
       return;
     }
+    toast("Role updated");
     router.refresh();
   }
 
-  async function handleRemove(memberId: string) {
+  async function handleSuspendToggle(memberId: string, currentStatus: WorkspaceMemberStatus) {
+    const nextStatus: WorkspaceMemberStatus = currentStatus === "active" ? "suspended" : "active";
+    setPendingMemberId(memberId);
+    setOptimisticMembers((prev) =>
+      prev.map((m) => (m.id === memberId ? { ...m, status: nextStatus } : m)),
+    );
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("workspace_members")
+      .update({ status: nextStatus })
+      .eq("id", memberId);
+
+    setPendingMemberId(null);
+    if (error) {
+      toast("Failed to update status");
+      setOptimisticMembers(members);
+      return;
+    }
+    toast(nextStatus === "suspended" ? "Member suspended" : "Member reactivated");
+    router.refresh();
+  }
+
+  async function handleDelete(memberId: string) {
     const supabase = createClient();
     const { error } = await supabase
       .from("workspace_members")
@@ -79,10 +120,11 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
       .eq("id", memberId);
 
     if (error) {
-      console.error("Failed to remove member:", error.message);
+      toast("Failed to remove member");
       return;
     }
-    setRemoving(null);
+    setDeleteTarget(null);
+    toast("Member removed");
     router.refresh();
   }
 
@@ -94,9 +136,10 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
       .eq("id", invitationId);
 
     if (error) {
-      console.error("Failed to revoke invitation:", error.message);
+      toast("Failed to revoke invitation");
       return;
     }
+    toast("Invitation revoked");
     router.refresh();
   }
 
@@ -108,6 +151,7 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
   }
 
   const pendingInvitations = invitations.filter((inv) => !inv.accepted_at);
+  const displayMembers = optimisticMembers;
 
   return (
     <div className={styles.page}>
@@ -126,18 +170,31 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
 
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>
-            Current Members ({members.length})
+            Current Members ({displayMembers.length})
           </h3>
-          {members.length === 0 ? (
+          {displayMembers.length === 0 ? (
             <div className={styles.empty}>No members found.</div>
           ) : (
             <div className={styles.list}>
-              {members.map((member) => {
+              {displayMembers.map((member) => {
                 const isSelf = member.user_id === currentUserId;
+                const online = isOnline(member.last_seen);
+                const suspended = member.status === "suspended";
+                const isPending = pendingMemberId === member.id;
                 return (
-                  <div key={member.id} className={styles.memberRow}>
-                    <div className={styles.avatar}>
-                      {getInitials(member.full_name, member.email)}
+                  <div
+                    key={member.id}
+                    className={`${styles.memberRow} ${suspended ? styles.memberRowSuspended : ""}`}
+                  >
+                    <div className={styles.avatarWrap}>
+                      <div className={styles.avatar}>
+                        {getInitials(member.full_name, member.email)}
+                      </div>
+                      <span
+                        className={`${styles.presenceDot} ${online ? styles.presenceOnline : styles.presenceOffline}`}
+                        aria-label={online ? "Online" : "Offline"}
+                        title={online ? "Online now" : member.last_seen ? `Last seen ${formatDate(member.last_seen)}` : "Never seen"}
+                      />
                     </div>
                     <div className={styles.memberInfo}>
                       <span className={styles.memberName}>
@@ -150,31 +207,49 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
                       <span className={styles.joinDate}>
                         Joined {formatDate(member.created_at)}
                       </span>
+
+                      {suspended && (
+                        <span className={`pill ${styles.statusSuspended}`}>SUSPENDED</span>
+                      )}
+
                       {canManageTeam && !isSelf ? (
                         <select
                           className={styles.roleSelect}
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as WorkspaceRole)}
+                          disabled={isPending}
                         >
                           <option value="admin">Admin</option>
-                          <option value="account_lead">Account Lead</option>
                           <option value="team_member">Team Member</option>
-                          <option value="finance">Finance</option>
-                          <option value="viewer">Viewer</option>
+                          <option value="sales">Sales</option>
                         </select>
                       ) : (
                         <span className={`pill ${ROLE_PILL[member.role]}`}>
                           {ROLE_LABELS[member.role]}
                         </span>
                       )}
+
                       {canManageTeam && !isSelf && (
-                        <button
-                          className={styles.removeButton}
-                          onClick={() => setRemoving(member.id)}
-                          aria-label={`Remove ${member.full_name || member.email}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <>
+                          <button
+                            className={`${styles.iconButton} ${suspended ? styles.iconButtonRestore : styles.iconButtonSuspend}`}
+                            onClick={() => handleSuspendToggle(member.id, member.status)}
+                            disabled={isPending}
+                            aria-label={suspended ? "Unsuspend member" : "Suspend member"}
+                            title={suspended ? "Unsuspend" : "Suspend"}
+                          >
+                            {suspended ? <ShieldCheck size={16} /> : <Ban size={16} />}
+                          </button>
+                          <button
+                            className={`${styles.iconButton} ${styles.iconButtonDelete}`}
+                            onClick={() => setDeleteTarget(member)}
+                            disabled={isPending}
+                            aria-label={`Remove ${member.full_name || member.email}`}
+                            title="Remove from workspace"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -231,17 +306,18 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
         )}
       </div>
 
-      {removing && (
-        <div className={styles.confirmOverlay} onClick={() => setRemoving(null)}>
+      {deleteTarget && (
+        <div className={styles.confirmOverlay} onClick={() => setDeleteTarget(null)}>
           <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+            <p className={styles.confirmTitle}>Remove {deleteTarget.full_name || deleteTarget.email}?</p>
             <p className={styles.confirmText}>
-              Remove this member from the workspace? They will lose all access.
+              Are you sure? This cannot be undone. They will lose all access to this workspace.
             </p>
             <div className={styles.confirmActions}>
-              <button className="secondary" onClick={() => setRemoving(null)}>
+              <button className="secondary" onClick={() => setDeleteTarget(null)}>
                 Cancel
               </button>
-              <button className={styles.dangerButton} onClick={() => handleRemove(removing)}>
+              <button className={styles.dangerButton} onClick={() => handleDelete(deleteTarget.id)}>
                 Remove
               </button>
             </div>
@@ -259,3 +335,4 @@ export function TeamList({ members, invitations, workspaceId, currentUserId, can
     </div>
   );
 }
+

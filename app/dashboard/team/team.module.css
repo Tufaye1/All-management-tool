@@ -57,6 +57,11 @@
   gap: var(--space-4);
 }
 
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -69,6 +74,26 @@
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   flex-shrink: 0;
+}
+
+.presenceDot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-card);
+  pointer-events: none;
+}
+
+.presenceOnline {
+  background: var(--color-success);
+}
+
+.presenceOffline {
+  background: var(--color-bg-muted);
+  border-color: var(--color-bg-card);
 }
 
 .memberInfo {
@@ -151,15 +176,62 @@
   transform: none;
 }
 
+/* Icon action buttons (suspend / restore / delete) */
+.iconButton {
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.iconButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iconButton:active {
+  transform: none;
+}
+
+.iconButtonSuspend:hover:not(:disabled) {
+  background: var(--color-warning-light, rgba(255, 159, 10, 0.12));
+  color: var(--color-warning, #FF9F0A);
+}
+
+.iconButtonRestore:hover:not(:disabled) {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.iconButtonDelete:hover:not(:disabled) {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+/* Suspended row state */
+.memberRowSuspended {
+  opacity: 0.6;
+}
+
+/* Status badges */
+.statusSuspended {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.5px;
+  font-size: var(--text-xs);
+}
+
 /* Role pills */
 .pillAdmin {
   background: var(--color-primary-light);
   color: var(--color-primary);
-}
-
-.pillAccountLead {
-  background: rgba(175, 82, 222, 0.12);
-  color: rgb(175, 82, 222);
 }
 
 .pillTeamMember {
@@ -167,14 +239,9 @@
   color: var(--color-text-secondary);
 }
 
-.pillFinance {
-  background: var(--color-success-light);
-  color: var(--color-success);
-}
-
-.pillViewer {
-  background: var(--color-bg-muted);
-  color: var(--color-text-tertiary);
+.pillSales {
+  background: rgba(175, 82, 222, 0.12);
+  color: rgb(175, 82, 222);
 }
 
 /* Invitation rows */
@@ -255,9 +322,20 @@
   gap: var(--space-4);
 }
 
-.confirmText {
-  font-size: var(--text-base);
+.confirmTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--color-text-primary);
+  margin: 0;
+}
+
+.confirmText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
 }
 
 .confirmActions {

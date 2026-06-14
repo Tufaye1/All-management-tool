@@ -8,6 +8,7 @@ import { pdf } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast";
 import { formatCurrency } from "@/lib/currency";
+import type { FinancePermissions } from "@/lib/permissions";
 import type { RevenueEntry, CostEntry, InvoiceWithClient, Client } from "@/lib/types";
 import { RevenueModal } from "./revenue-modal";
 import { CostModal } from "./cost-modal";
@@ -16,7 +17,7 @@ import styles from "./finance.module.css";
 
 type FinanceDashboardProps = {
   workspaceId: string;
-  canWrite: boolean;
+  permissions: FinancePermissions;
   revenue: RevenueEntry[];
   costs: CostEntry[];
   invoices: InvoiceWithClient[];
@@ -47,7 +48,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function FinanceDashboard({
   workspaceId,
-  canWrite,
+  permissions,
   revenue,
   costs,
   invoices,
@@ -57,6 +58,8 @@ export function FinanceDashboard({
   const router = useRouter();
   const { toast } = useToast();
   const [activeModal, setActiveModal] = useState<"revenue" | "cost" | null>(null);
+
+  const { canViewDashboard, canViewList, canCreateInvoice, canCreateExpense } = permissions;
 
   const totalRevenue = useMemo(() => revenue.reduce((sum, r) => sum + r.amount, 0), [revenue]);
   const totalCosts = useMemo(() => costs.reduce((sum, c) => sum + c.amount, 0), [costs]);
@@ -89,19 +92,23 @@ export function FinanceDashboard({
       .sort((a, b) => b.revenue - a.revenue);
   }, [revenue, costs, clients]);
 
-  /* Recent transactions (last 10 combined) */
+  /* Combined transactions list.
+   * Admin (canViewDashboard) sees the last 10 of revenue+cost, mixed.
+   * team_member (list-only) sees the full expense list — no revenue, no slice. */
   const recentTransactions = useMemo(() => {
     const items: { id: string; type: "revenue" | "cost"; amount: number; description: string; clientName: string; date: string }[] = [];
 
-    for (const r of revenue) {
-      items.push({
-        id: r.id,
-        type: "revenue",
-        amount: r.amount,
-        description: r.description ?? "Revenue",
-        clientName: clients.find((c) => c.id === r.client_id)?.name ?? "Unknown",
-        date: r.date,
-      });
+    if (canViewDashboard) {
+      for (const r of revenue) {
+        items.push({
+          id: r.id,
+          type: "revenue",
+          amount: r.amount,
+          description: r.description ?? "Revenue",
+          clientName: clients.find((c) => c.id === r.client_id)?.name ?? "Unknown",
+          date: r.date,
+        });
+      }
     }
 
     for (const c of costs) {
@@ -115,8 +122,9 @@ export function FinanceDashboard({
       });
     }
 
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-  }, [revenue, costs, clients]);
+    const sorted = items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return canViewDashboard ? sorted.slice(0, 10) : sorted;
+  }, [revenue, costs, clients, canViewDashboard]);
 
   async function handleDownloadPdf(inv: InvoiceWithClient) {
     const blob = await pdf(
@@ -159,18 +167,22 @@ export function FinanceDashboard({
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Finance</h1>
-        {canWrite && (
-          <div className={styles.actions}>
+        <div className={styles.actions}>
+          {canViewDashboard && (
             <button className="primary" onClick={() => setActiveModal("revenue")}>
               <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                 <Plus size={16} /> Revenue
               </span>
             </button>
+          )}
+          {canCreateExpense && (
             <button className="secondary" onClick={() => setActiveModal("cost")}>
               <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                <Plus size={16} /> Cost
+                <Plus size={16} /> Log Expense
               </span>
             </button>
+          )}
+          {canCreateInvoice && (
             <Link href="/dashboard/finance/invoice-generator" style={{ textDecoration: "none" }}>
               <button className="secondary" type="button">
                 <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
@@ -178,11 +190,12 @@ export function FinanceDashboard({
                 </span>
               </button>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — admin only. team_member never sees totals/P&L. */}
+      {canViewDashboard && (
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <span className={styles.statLabel}>
@@ -217,8 +230,10 @@ export function FinanceDashboard({
           </span>
         </div>
       </div>
+      )}
 
-      {/* Per-Client P&L */}
+      {/* Per-Client P&L — admin only. */}
+      {canViewDashboard && (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Client P&L</h2>
@@ -264,8 +279,10 @@ export function FinanceDashboard({
           </div>
         )}
       </div>
+      )}
 
-      {/* Invoices */}
+      {/* Invoices — visible to both admin and team_member (canViewList). */}
+      {canViewList && (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Invoices</h2>
@@ -301,7 +318,7 @@ export function FinanceDashboard({
                     </td>
                     <td>
                       <div className={styles.invoiceActions}>
-                        {canWrite && (inv.status === "unpaid" || inv.status === "overdue") && (
+                        {canViewDashboard && (inv.status === "unpaid" || inv.status === "overdue") && (
                           <button
                             className={styles.markPaidBtn}
                             onClick={() => handleMarkPaid(inv.id)}
@@ -326,11 +343,17 @@ export function FinanceDashboard({
           </div>
         )}
       </div>
+      )}
 
-      {/* Recent Transactions */}
+      {/* Transactions / Expenses list.
+       * Admin sees "Recent Transactions" (revenue + costs, last 10).
+       * team_member sees "Expenses" (full list of costs, no revenue). */}
+      {canViewList && (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Recent Transactions</h2>
+          <h2 className={styles.sectionTitle}>
+            {canViewDashboard ? "Recent Transactions" : "Expenses"}
+          </h2>
         </div>
         {recentTransactions.length === 0 ? (
           <p className={styles.empty}>No transactions yet.</p>
@@ -354,6 +377,7 @@ export function FinanceDashboard({
           </div>
         )}
       </div>
+      )}
 
       {/* Modals */}
       {activeModal === "revenue" && (

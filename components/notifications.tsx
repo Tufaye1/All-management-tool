@@ -115,7 +115,7 @@ export function NotificationBell({ userId, workspaceId, role }: NotificationBell
         }
 
         // Overdue invoices (if user has finance permission)
-        if (hasPermission(role, "finance:read")) {
+        if (hasPermission(role, "finance:view_list")) {
           const { data: invoicesOverdue } = await supabase
             .from("invoices")
             .select("id, invoice_number, due_date")

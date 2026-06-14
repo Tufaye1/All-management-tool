@@ -57,13 +57,17 @@ export type TaskWithRelations = Task & {
   clients: { name: string } | null;
 };
 
-export type WorkspaceRole = "admin" | "account_lead" | "team_member" | "finance" | "viewer";
+export type WorkspaceRole = "admin" | "team_member" | "sales";
+
+export type WorkspaceMemberStatus = "active" | "suspended";
 
 export type WorkspaceMember = {
   id: string;
   workspace_id: string;
   user_id: string;
   role: WorkspaceRole;
+  status: WorkspaceMemberStatus;
+  last_seen: string | null;
   created_at: string;
 };
 

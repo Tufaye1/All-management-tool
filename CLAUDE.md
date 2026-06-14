@@ -59,7 +59,9 @@ Before writing any UI component, **read `styles/design-system.css`** and use onl
 
 - **Multi-tenant from day one.** Every database row that isn't a global lookup has a `workspace_id` foreign key. RLS (Row Level Security) policies enforce isolation in Supabase.
 - **Tasks have dual tags:** every task belongs to a `project_id` (→ client) AND a `function_tag` (design / marketing / strategy / etc.). UI must support filtering by either.
-- **5 roles:** `admin`, `account_lead`, `team_member`, `finance`, `viewer`. Permissions are role-based, not per-user. Encoded in code, not a DB table (for now).
+- **3 roles:** `admin`, `team_member`, `sales`. Permissions are role-based, not per-user. Encoded in code, not a DB table (for now). Granular permission strings (e.g., `leads:move_pipeline`, `finance:view_dashboard`) live in `lib/permissions.ts`.
+- **Suspended users blocked at layout:** `workspace_members.status` is `active` or `suspended`. The dashboard layout (`app/dashboard/layout.tsx`) redirects suspended users to `/suspended` on every server render. Middleware stays JWT-only for speed.
+- **Heartbeat:** `workspace_members.last_seen` updates via the `touch_last_seen()` RPC on every dashboard page load. Used for the online-indicator (green dot ≤ 5 min).
 - **No in-app chat.** Slack integration only (read messages via Slack API).
 - **No time tracking.** Flat-fee billing.
 - **No online payments.** Invoices are PDFs. Payment status is manually marked.
@@ -112,7 +114,7 @@ Tufayel runs the agency and is building this himself with Claude Code's help. He
 | Table | Purpose | Key columns |
 |-------|---------|-------------|
 | `workspaces` | Multi-tenant container | `id`, `name`, `owner_id`, `currency` (default 'USD') |
-| `workspace_members` | Links users to workspaces with a role | `workspace_id`, `user_id`, `role` |
+| `workspace_members` | Links users to workspaces with a role | `workspace_id`, `user_id`, `role` (admin/team_member/sales), `status` (active/suspended), `last_seen` |
 | `clients` | Agency clients. Soft delete via `archived_at` | `workspace_id`, `name`, `status`, `contact_name`, `contact_email`, `contact_phone`, `slack_channel_id` |
 | `projects` | Belongs to a client | `workspace_id`, `client_id`, `name`, `status`, `start_date`, `end_date`, `drive_folder_url` |
 | `tasks` | Dual-tagged: `project_id` + `function_tag` | `workspace_id`, `project_id`, `client_id`, `title`, `status`, `function_tag`, `assignee_id`, `priority`, `position`, `due_date` |
@@ -198,18 +200,22 @@ All dashboard routes have `loading.tsx` with shimmer skeletons.
 
 ## Permissions system
 
-5 roles: `admin`, `account_lead`, `team_member`, `finance`, `viewer`.
+3 roles: `admin`, `team_member`, `sales`. Permission strings live in `lib/permissions.ts`.
 
-| Permission | admin | account_lead | team_member | finance | viewer |
-|------------|-------|--------------|-------------|---------|--------|
-| clients:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
-| projects:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ✅/❌ | ✅/❌ |
-| tasks:read/write_own/write_all | ✅/✅/✅ | ✅/✅/✅ | ✅/✅/❌ | ✅/❌/❌ | ✅/❌/❌ |
-| leads:read/write | ✅/✅ | ✅/✅ | ✅/❌ | ❌/❌ | ✅/❌ |
-| finance:read/write | ✅/✅ | ❌/❌ | ❌/❌ | ✅/✅ | ❌/❌ |
-| team:read/invite/manage | ✅/✅/✅ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ | ✅/❌/❌ |
-| Settings page | ✅ (all tabs) | ✅ (no templates) | ✅ (no templates) | ✅ (no templates) | ✅ (no templates) |
-| Reports page | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Permission | admin | team_member | sales |
+|------------|-------|-------------|-------|
+| clients (read/create/edit/delete) | ✅/✅/✅/✅ | ✅/✅/✅/❌ | ❌/❌/❌/❌ |
+| projects (read/create/edit/delete) | ✅/✅/✅/✅ | ✅/✅/✅/❌ | ❌/❌/❌/❌ |
+| tasks (read/create/edit_own/edit_all/assign_others) | ✅/✅/✅/✅/✅ | ✅/✅/✅/❌/✅ | ✅/❌/✅/❌/❌ |
+| leads (read/create/edit/delete/move_pipeline/convert) | ✅/✅/✅/✅/✅/✅ | ✅/✅/❌/❌/❌/❌ | ✅/✅/✅/✅/✅/✅ |
+| finance (view_dashboard/view_list/create_invoice/create_expense/edit) | ✅/✅/✅/✅/✅ | ❌/✅/✅/✅/❌ | ❌/❌/❌/❌/❌ |
+| team (view/invite/manage) | ✅/✅/✅ | ✅/❌/❌ | ❌/❌/❌ |
+| dashboard (view_main/view_personal) | ✅/❌ | ✅/❌ | ❌/✅ |
+| reports:view | ✅ | ❌ | ❌ |
+
+Finance UI gating helper: `getFinancePermissions(role)` returns `{ canViewDashboard, canViewList, canCreateInvoice, canCreateExpense }`. The Finance page uses these flags to conditionally render the summary stats / P&L (admin only) vs the flat invoice/expense list (admin + team_member).
+
+Sales users land on `<SalesDashboard />` instead of the main agency dashboard — pipeline by stage + their task status, scoped to `auth.uid()`.
 
 ---
 

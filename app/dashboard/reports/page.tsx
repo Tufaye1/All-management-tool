@@ -27,7 +27,7 @@ export default async function ReportsPage() {
   }
 
   const role = membership.role as WorkspaceRole;
-  if (!hasPermission(role, "finance:read")) {
+  if (!hasPermission(role, "reports:view")) {
     redirect("/dashboard");
   }
 

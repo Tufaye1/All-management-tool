@@ -116,10 +116,9 @@ export function InviteModal({ workspaceId, invitedBy, onClose }: InviteModalProp
               value={role}
               onChange={(e) => setRole(e.target.value as WorkspaceRole)}
             >
-              <option value="account_lead">Account Lead</option>
+              <option value="admin">Admin</option>
               <option value="team_member">Team Member</option>
-              <option value="finance">Finance</option>
-              <option value="viewer">Viewer</option>
+              <option value="sales">Sales</option>
             </select>
           </div>
 

@@ -28,7 +28,7 @@ export default async function InvoiceGeneratorPage() {
 
   const role = membership.role as WorkspaceRole;
 
-  if (!hasPermission(role, "finance:write")) {
+  if (!hasPermission(role, "finance:create_invoice")) {
     redirect("/dashboard/finance");
   }
 

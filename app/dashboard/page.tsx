@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/currency";
 import type { WorkspaceRole } from "@/lib/types";
+import { SalesDashboard } from "./sales-dashboard";
 import styles from "./dashboard.module.css";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -67,19 +68,50 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: membership } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
+  const [membershipResult, preProfileResult] = await Promise.all([
+    supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single(),
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
+  const membership = membershipResult.data;
   if (!membership) {
     redirect("/login");
   }
 
   const wid = membership.workspace_id;
   const role = membership.role as WorkspaceRole;
+  const preDisplayName = preProfileResult.data?.full_name
+    || (user.user_metadata?.full_name as string)
+    || user.email?.split("@")[0]
+    || "there";
+
+  // Sales users get a personal dashboard scoped to their leads + tasks.
+  if (role === "sales") {
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("currency")
+      .eq("id", wid)
+      .single();
+
+    return (
+      <SalesDashboard
+        userId={user.id}
+        workspaceId={wid}
+        displayName={preDisplayName}
+        currency={workspace?.currency ?? "USD"}
+      />
+    );
+  }
+
   const today = getToday();
 
   // Get first day of current month for "won this month"
@@ -95,7 +127,6 @@ export default async function DashboardPage() {
     activeProjectsResult,
     recentClientsResult,
     myTasksResult,
-    profileResult,
     workspaceResult,
     // Pipeline queries
     activeLeadsResult,
@@ -150,11 +181,6 @@ export default async function DashboardPage() {
       .neq("status", "done")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(5),
-    supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single(),
     supabase
       .from("workspaces")
       .select("currency")
@@ -233,10 +259,7 @@ export default async function DashboardPage() {
   const myTasks = myTasksResult.data ?? [];
   const currency = workspaceResult.data?.currency ?? "USD";
 
-  const displayName = profileResult.data?.full_name
-    || (user.user_metadata?.full_name as string)
-    || user.email?.split("@")[0]
-    || "there";
+  const displayName = preDisplayName;
 
   // Pipeline stats
   const activeLeads = activeLeadsResult.data ?? [];
@@ -256,7 +279,7 @@ export default async function DashboardPage() {
   const outstandingInvoices = outstandingInvoicesResult.data ?? [];
   const outstandingTotal = outstandingInvoices.reduce((s, i) => s + (i.amount ?? 0), 0);
   const hasOverdue = outstandingInvoices.some((i) => i.status === "overdue");
-  const canSeeFinance = hasPermission(role, "finance:read");
+  const canSeeFinance = hasPermission(role, "finance:view_dashboard");
 
   // Build activity feed
   const activityItems: ActivityItem[] = [];

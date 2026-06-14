@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { hasPermission } from "@/lib/permissions";
+import { getFinancePermissions } from "@/lib/permissions";
 import type { WorkspaceRole, Client, RevenueEntry, CostEntry, InvoiceWithClient } from "@/lib/types";
 import { FinanceDashboard } from "./finance-dashboard";
 
@@ -27,12 +27,13 @@ export default async function FinancePage() {
   }
 
   const role = membership.role as WorkspaceRole;
+  const permissions = getFinancePermissions(role);
 
-  if (!hasPermission(role, "finance:read")) {
+  // Sales (and anyone else without finance access) get bounced.
+  if (!permissions.canViewDashboard && !permissions.canViewList) {
     redirect("/dashboard");
   }
 
-  const canWrite = hasPermission(role, "finance:write");
   const workspaceId = membership.workspace_id;
 
   const [revenueResult, costsResult, invoicesResult, clientsResult, workspaceResult] = await Promise.all([
@@ -73,7 +74,7 @@ export default async function FinancePage() {
   return (
     <FinanceDashboard
       workspaceId={workspaceId}
-      canWrite={canWrite}
+      permissions={permissions}
       revenue={revenue}
       costs={costs}
       invoices={invoices}

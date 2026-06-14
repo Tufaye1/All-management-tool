@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { WorkspaceRole } from "@/lib/types";
+import type { WorkspaceRole, WorkspaceMemberStatus } from "@/lib/types";
 import { DashboardNav } from "./dashboard-nav";
 import { ToastProvider } from "@/components/toast";
 import styles from "./nav.module.css";
@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   const [membershipResult, profileResult] = await Promise.all([
     supabase
       .from("workspace_members")
-      .select("workspace_id, role")
+      .select("workspace_id, role, status")
       .eq("user_id", user.id)
       .limit(1)
       .single(),
@@ -31,7 +31,12 @@ export default async function DashboardLayout({
       .single(),
   ]);
 
-  const role: WorkspaceRole = (membershipResult.data?.role as WorkspaceRole) ?? "viewer";
+  const memberStatus = (membershipResult.data?.status as WorkspaceMemberStatus | undefined) ?? "active";
+  if (memberStatus === "suspended") {
+    redirect("/suspended");
+  }
+
+  const role: WorkspaceRole = (membershipResult.data?.role as WorkspaceRole) ?? "team_member";
   const fullName = profileResult.data?.full_name ?? null;
   const workspaceId = membershipResult.data?.workspace_id ?? "";
 

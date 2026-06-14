@@ -142,10 +142,8 @@ function AcceptInviteContent() {
 
   const ROLE_LABELS: Record<string, string> = {
     admin: "Admin",
-    account_lead: "Account Lead",
     team_member: "Team Member",
-    finance: "Finance",
-    viewer: "Viewer",
+    sales: "Sales",
   };
 
   return (
