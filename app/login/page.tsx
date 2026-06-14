@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./login.module.css";
 
@@ -18,7 +19,17 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -38,8 +49,12 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    if (redirectTo) {
+      window.location.href = redirectTo;
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
   }
 
   async function handleGoogleLogin() {
@@ -112,7 +127,7 @@ export default function LoginPage() {
 
         <p className={styles.footer}>
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className={styles.link}>Sign up</Link>
+          <Link href={redirectTo ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"} className={styles.link}>Sign up</Link>
         </p>
       </div>
     </div>

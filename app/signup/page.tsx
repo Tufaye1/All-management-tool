@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import styles from "../login/login.module.css";
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +31,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -36,6 +46,16 @@ export default function SignupPage() {
       return;
     }
 
+    if (data.session) {
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
+      return;
+    }
+
     setIsSuccess(true);
     setIsLoading(false);
   }
@@ -44,14 +64,19 @@ export default function SignupPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <h2 className={styles.heading}>Check your email</h2>
+          <h2 className={styles.heading}>Account Created</h2>
           <p className={styles.subtitle}>
-            We sent a confirmation link to <strong>{email}</strong>
+            {redirectTo
+              ? "Your account is ready. Sign in to accept the invitation."
+              : "Your account is ready. Sign in to continue."}
           </p>
-          <p className={styles.footer}>
-            Already confirmed?{" "}
-            <Link href="/login" className={styles.link}>Sign in</Link>
-          </p>
+          <Link
+            href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"}
+            className={styles.link}
+            style={{ display: "inline-block", marginTop: "var(--space-3)" }}
+          >
+            <button className="primary">Sign In</button>
+          </Link>
         </div>
       </div>
     );
@@ -110,7 +135,7 @@ export default function SignupPage() {
 
         <p className={styles.footer}>
           Already have an account?{" "}
-          <Link href="/login" className={styles.link}>Sign in</Link>
+          <Link href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"} className={styles.link}>Sign in</Link>
         </p>
       </div>
     </div>

@@ -87,9 +87,8 @@ function AcceptInviteContent() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      // Not logged in — send to login with redirect back here
       const currentUrl = window.location.href;
-      router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`);
+      router.push(`/signup?redirect=${encodeURIComponent(currentUrl)}`);
       return;
     }
 
