@@ -47,9 +47,17 @@ type LeadsBoardProps = {
   currency: string;
 };
 
-export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: LeadsBoardProps) {
+export function LeadsBoard({ leads: initialLeads, members, workspaceId, canWrite, currency }: LeadsBoardProps) {
   const router = useRouter();
   const { toast } = useToast();
+
+  /* ---- Optimistic leads state ---- */
+  const [leads, setLeads] = useState(initialLeads);
+  const prevLeadsRef = useRef(initialLeads);
+  if (prevLeadsRef.current !== initialLeads) {
+    prevLeadsRef.current = initialLeads;
+    setLeads(initialLeads);
+  }
 
   /* ---- State ---- */
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -97,9 +105,14 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
     setDraggedId(leadId);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", leadId);
+
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = "0.4";
   }
 
-  function handleDragEnd() {
+  function handleDragEnd(e: React.DragEvent) {
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = "1";
     setDraggedId(null);
     setActiveColumn(null);
     dragCounterRef.current.clear();
@@ -137,7 +150,6 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.status === newStatus) return;
 
-    /* Special flows for Won / Lost */
     if (newStatus === "won") {
       setConvertModal(lead);
       return;
@@ -151,11 +163,16 @@ export function LeadsBoard({ leads, members, workspaceId, canWrite, currency }: 
   }
 
   async function updateLeadStatus(leadId: string, newStatus: LeadStatus, extra?: Record<string, unknown>) {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, status: newStatus, ...extra } as Lead : l))
+    );
+
     const supabase = createClient();
     const updates: Record<string, unknown> = { status: newStatus, updated_at: new Date().toISOString(), ...extra };
 
     const { error } = await supabase.from("leads").update(updates).eq("id", leadId);
     if (error) {
+      setLeads(initialLeads);
       toast("Failed to update lead");
       return;
     }
