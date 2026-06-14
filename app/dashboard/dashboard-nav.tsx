@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, BarChart3, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Building2, CheckSquare, Target, Users, DollarSign, BarChart3, Settings, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { canSeeNavItem } from "@/lib/permissions";
 import { NotificationBell } from "@/components/notifications";
+import { useTheme } from "@/components/theme-provider";
 import type { WorkspaceRole } from "@/lib/types";
 import styles from "./nav.module.css";
 
@@ -36,6 +37,7 @@ type DashboardNavProps = {
 export function DashboardNav({ email, role, fullName, userId, workspaceId }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   function isActive(href: string, exact: boolean) {
@@ -100,6 +102,9 @@ export function DashboardNav({ email, role, fullName, userId, workspaceId }: Das
             {fullName && <span className={styles.userName}>{fullName}</span>}
             <span className={styles.userEmail}>{email}</span>
           </div>
+          <button className={styles.themeToggle} onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
           <button className={styles.signOutButton} onClick={handleSignOut} aria-label="Sign out">
             <LogOut size={18} />
           </button>

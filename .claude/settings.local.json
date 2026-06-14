@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls *)",
+      "Bash(npm install *)",
+      "Bash(npx next *)",
+      "Bash(npx kill-port *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

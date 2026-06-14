@@ -141,6 +141,26 @@
   display: block;
 }
 
+.themeToggle {
+  background: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-primary);
+}
+
+.themeToggle:active {
+  transform: none;
+}
+
 .signOutButton {
   background: none;
   padding: var(--space-2);

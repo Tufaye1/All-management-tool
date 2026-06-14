@@ -103,6 +103,41 @@
   --glass-blur:   blur(20px) saturate(180%);
 }
 
+/* -------- DARK MODE -------- */
+[data-theme="dark"] {
+  --color-primary:           #0A84FF;
+  --color-primary-hover:     #409CFF;
+  --color-primary-light:     rgba(10, 132, 255, 0.18);
+  --color-primary-text:      #FFFFFF;
+
+  --color-bg-app:            #1C1C1E;
+  --color-bg-card:           #2C2C2E;
+  --color-bg-elevated:       #3A3A3C;
+  --color-bg-muted:          #38383A;
+
+  --color-text-primary:      #F5F5F7;
+  --color-text-secondary:    #AEAEB2;
+  --color-text-tertiary:     #8E8E93;
+
+  --color-border:            rgba(255, 255, 255, 0.08);
+  --color-border-strong:     rgba(255, 255, 255, 0.15);
+
+  --color-success:           #30D158;
+  --color-success-light:     rgba(48, 209, 88, 0.18);
+  --color-warning:           #FF9F0A;
+  --color-warning-light:     rgba(255, 159, 10, 0.18);
+  --color-danger:            #FF453A;
+  --color-danger-light:      rgba(255, 69, 58, 0.18);
+  --color-info:              #0A84FF;
+  --color-info-light:        rgba(10, 132, 255, 0.18);
+
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg:    0 12px 32px rgba(0, 0, 0, 0.4);
+
+  --glass-bg:     rgba(44, 44, 46, 0.72);
+}
+
 /* -------- BASE STYLES -------- */
 html, body {
   font-family: var(--font-text);

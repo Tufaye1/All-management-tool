@@ -1,0 +1,231 @@
+.calendarWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.monthLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-primary);
+}
+
+.navBtn {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navBtn:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
+.navBtn:active {
+  transform: none;
+}
+
+.navBtns {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.todayBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.todayBtn:hover {
+  background: var(--color-primary-light);
+}
+
+.todayBtn:active {
+  transform: none;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-border);
+  gap: 1px;
+}
+
+.dayHeader {
+  background: var(--color-bg-muted);
+  padding: var(--space-2) var(--space-1);
+  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cell {
+  background: var(--color-bg-card);
+  min-height: 100px;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: default;
+}
+
+.cellOutside {
+  background: var(--color-bg-app);
+}
+
+.cellToday {
+  background: var(--color-primary-light);
+}
+
+.dateNum {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-tertiary);
+  padding: 2px var(--space-1);
+  text-align: right;
+}
+
+.dateNumToday {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.dateNumOutside {
+  color: var(--color-text-tertiary);
+  opacity: 0.5;
+}
+
+/* Task chips */
+.taskChip {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  padding: 2px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  line-height: 1.4;
+}
+
+.taskChip:hover {
+  opacity: 0.8;
+}
+
+.chipTodo {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.chipInProgress {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.chipReview {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.chipDone {
+  background: var(--color-bg-muted);
+  color: var(--color-text-tertiary);
+}
+
+.chipBlocked {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.moreChip {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  padding: 2px 4px;
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+
+.moreChip:hover {
+  color: var(--color-primary);
+}
+
+/* Mobile: smaller cells */
+@media (max-width: 768px) {
+  .cell {
+    min-height: 60px;
+  }
+
+  .taskChip {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+
+  .monthLabel {
+    font-size: var(--text-base);
+  }
+}
+
+@media (max-width: 480px) {
+  .cell {
+    min-height: 44px;
+    padding: 1px;
+  }
+
+  .dateNum {
+    font-size: 10px;
+  }
+
+  .taskChip {
+    display: none;
+  }
+
+  .dotIndicator {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    padding-top: 2px;
+  }
+
+  .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+  }
+}
+
+@media (min-width: 481px) {
+  .dotIndicator {
+    display: none;
+  }
+}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, FolderOpen, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Check, X, FolderOpen, MessageSquare, CalendarDays, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast";
 import { SUPPORTED_CURRENCIES, getCurrencySymbol } from "@/lib/currency";
@@ -129,6 +129,7 @@ function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin, connected
 
   const driveConnected = connectedProviders.includes("google_drive");
   const slackConnected = connectedProviders.includes("slack");
+  const calendarConnected = connectedProviders.includes("google_calendar");
 
   async function handleSave() {
     setIsSaving(true);
@@ -158,6 +159,10 @@ function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin, connected
 
   function handleConnectSlack() {
     window.location.href = `/api/integrations/slack/connect?workspaceId=${workspaceId}`;
+  }
+
+  function handleConnectCalendar() {
+    window.location.href = `/api/integrations/google-calendar/connect?workspaceId=${workspaceId}`;
   }
 
   return (
@@ -259,6 +264,27 @@ function WorkspaceTab({ workspaceId, workspaceName, currency, isAdmin, connected
               <span className={styles.connectedBadge}>Connected</span>
             ) : (
               <button className="secondary" style={{ fontSize: "var(--text-sm)", padding: "var(--space-2) var(--space-4)" }} onClick={handleConnectSlack}>
+                Connect
+              </button>
+            )
+          )}
+        </div>
+
+        <div className={styles.integrationRow}>
+          <div className={styles.integrationInfo}>
+            <CalendarDays size={18} />
+            <div>
+              <span className={styles.integrationName}>Google Calendar</span>
+              <span className={styles.integrationDesc}>
+                {calendarConnected ? "Connected — upcoming events shown on dashboard" : "View upcoming meetings and deadlines"}
+              </span>
+            </div>
+          </div>
+          {isAdmin && (
+            calendarConnected ? (
+              <span className={styles.connectedBadge}>Connected</span>
+            ) : (
+              <button className="secondary" style={{ fontSize: "var(--text-sm)", padding: "var(--space-2) var(--space-4)" }} onClick={handleConnectCalendar}>
                 Connect
               </button>
             )

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Filter, X, List, Columns3 } from "lucide-react";
+import { Plus, Filter, X, List, Columns3, Calendar } from "lucide-react";
 import type { Task, TaskWithRelations, Client, WorkspaceMemberWithEmail } from "@/lib/types";
 import { TaskModal } from "./task-modal";
 import { TaskPanel } from "./task-panel";
 import { KanbanView } from "./kanban-view";
+import { CalendarView } from "./calendar-view";
 import styles from "./tasks.module.css";
 import kanbanStyles from "./kanban-view.module.css";
 
@@ -74,7 +75,7 @@ type TaskListProps = {
   canEdit: boolean;
 };
 
-type ViewMode = "list" | "kanban";
+type ViewMode = "list" | "kanban" | "calendar";
 
 export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit }: TaskListProps) {
   const [showModal, setShowModal] = useState(false);
@@ -84,7 +85,7 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
 
   useEffect(() => {
     const saved = localStorage.getItem("agencyos-task-view");
-    if (saved === "list" || saved === "kanban") setViewMode(saved);
+    if (saved === "list" || saved === "kanban" || saved === "calendar") setViewMode(saved);
   }, []);
 
   function switchView(mode: ViewMode) {
@@ -164,6 +165,13 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
               >
                 <Columns3 size={14} />
                 Board
+              </button>
+              <button
+                className={`${kanbanStyles.viewToggleButton} ${viewMode === "calendar" ? kanbanStyles.viewToggleButtonActive : ""}`}
+                onClick={() => switchView("calendar")}
+              >
+                <Calendar size={14} />
+                Calendar
               </button>
             </div>
             {canEdit && (
@@ -260,6 +268,11 @@ export function TaskList({ tasks, clients, members, workspaceId, userId, canEdit
               ? "No tasks yet. Add your first task to get started."
               : "No tasks match the current filters."}
           </div>
+        ) : viewMode === "calendar" ? (
+          <CalendarView
+            tasks={filtered}
+            onTaskClick={(task) => setSelectedTask(task)}
+          />
         ) : viewMode === "kanban" ? (
           <KanbanView
             tasks={filtered}
