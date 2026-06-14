@@ -32,7 +32,7 @@ export default async function LeadsPage() {
     redirect("/dashboard");
   }
 
-  const canWrite = hasPermission(role, "leads:write");
+  const canWrite = hasPermission(role, "leads:edit");
   const workspaceId = membership.workspace_id;
 
   const [leadsResult, membersResult, profilesResult, workspaceResult] = await Promise.all([

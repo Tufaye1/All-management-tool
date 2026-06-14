@@ -63,7 +63,7 @@ export default async function TasksPage() {
   });
 
   const role = membership.role as WorkspaceRole;
-  const canEdit = hasPermission(role, "tasks:write_own");
+  const canEdit = hasPermission(role, "tasks:edit_own");
 
   return (
     <TaskList

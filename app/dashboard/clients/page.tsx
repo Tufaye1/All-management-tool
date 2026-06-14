@@ -34,7 +34,7 @@ export default async function ClientsPage() {
     .order("created_at", { ascending: false });
 
   const role = membership.role as WorkspaceRole;
-  const canEdit = hasPermission(role, "clients:write");
+  const canEdit = hasPermission(role, "clients:edit");
 
   return (
     <div style={{

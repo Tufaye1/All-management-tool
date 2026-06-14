@@ -59,7 +59,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
   }
 
   const role = membership.role as WorkspaceRole;
-  const canEdit = hasPermission(role, "projects:write");
+  const canEdit = hasPermission(role, "projects:edit");
 
   const connectedProviders = (integrationsResult.data ?? []).map((i) => i.provider);
   const driveConnected = connectedProviders.includes("google_drive");
